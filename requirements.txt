@@ -1,23 +1,26 @@
-scipy
-numpy
-scikit_learn
-scikit_posthocs
+# Audio specific
+musdb==0.4.0
+museval==0.4.0
+librosa==0.8.1
+stempeg==0.2.3
+ffmpeg==1.4
+ffmpeg-python==0.2.0
+ffprobe==0.5
 
-pandas
+# Common ML
+scipy==1.7.3
+numpy==1.19.5
+scikit-learn==1.0.1
+sklearn==0.0
+scikit-posthocs==0.6.7
+pandas==1.3.4
 
-torch
-torchaudio
+# Common DL
+torch==1.10.0
+torchaudio==0.10.0
+pytorch-lightning==1.4.9
+tensorflow==2.5.0
 
-spleeter
-asteroid
-openunmix
-norbert
-
-musdb
-museval
-librosa
-
-ffmpeg
-
-matplotlib
-seaborn
+# Visualization
+matplotlib==3.2.2
+seaborn==0.11.2
