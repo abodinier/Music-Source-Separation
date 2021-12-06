@@ -7,12 +7,17 @@ pandas
 
 torch
 torchaudio
+
+spleeter
+asteroid
 openunmix
 norbert
 
 musdb
 museval
-
 librosa
+
+ffmpeg
+
 matplotlib
 seaborn
