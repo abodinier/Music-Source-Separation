@@ -1,2 +1,5 @@
 .env
 data
+*.mp3
+*.wav
+*.pkl
