@@ -2,25 +2,27 @@
 musdb==0.4.0
 museval==0.4.0
 librosa==0.8.1
+openunmix==1.2.1
 stempeg==0.2.3
 ffmpeg==1.4
 ffmpeg-python==0.2.0
 ffprobe==0.5
 
 # Common ML
-scipy==1.7.3
+scipy==1.7.1
 numpy==1.19.5
 scikit-learn==1.0.1
-sklearn==0.0
-scikit-posthocs==0.6.7
-pandas==1.3.4
+pandas==1.2.1
 
 # Common DL
 torch==1.10.0
 torchaudio==0.10.0
 pytorch-lightning==1.4.9
-tensorflow==2.5.0
+tensorflow==2.6.0
 
 # Visualization
-matplotlib==3.2.2
-seaborn==0.11.2
+matplotlib==3.4.2
+seaborn==0.11.1
+
+# Notebook
+ipykernel==5.5.0
