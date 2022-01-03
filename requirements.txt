@@ -7,6 +7,8 @@ stempeg==0.2.3
 ffmpeg==1.4
 ffmpeg-python==0.2.0
 ffprobe==0.5
+asteroid==0.5.2
+asteroid-filterbanks==0.4.0
 
 # Common ML
 scipy==1.7.1
