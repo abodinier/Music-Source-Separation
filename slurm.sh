@@ -33,5 +33,4 @@ module load anaconda-py3
 
 conda activate pytorch
 
-
-python test.py
+CL_SOCKET_IFNAME=eno1 python test.py
