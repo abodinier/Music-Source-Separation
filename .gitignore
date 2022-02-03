@@ -3,3 +3,5 @@ data
 *.mp3
 *.wav
 *.pkl
+exp/test.ipynb
+exp/test.py
