@@ -9,16 +9,17 @@ ffmpeg-python==0.2.0
 ffprobe==0.5
 asteroid==0.5.2
 asteroid-filterbanks==0.4.0
+huggingface_hub
 
 # Common ML
-scipy==1.7.1
-numpy==1.19.5
+scipy
+numpy
 scikit-learn==1.0.1
 pandas==1.2.1
 
 # Common DL
 torch==1.10.0
-torchaudio==0.10.0
+torchaudio
 pytorch-lightning==1.4.9
 tensorflow==2.6.0
 
