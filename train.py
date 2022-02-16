@@ -29,7 +29,7 @@ LR = args.lr
 N_EPOCHS = args.epochs
 BATCH_SIZE = args.batchsize
 CKP_DIR = Path(args.ckpdir)
-CKP_PATH = CKP_DIR/f"model_{datetime.now().strftime('%Y%m%d-%H%M%S')}.pth)"
+CKP_PATH = CKP_DIR/f"model_{datetime.now().strftime('%Y%m%d-%H%M%S')}.pth"
 
 if not CKP_DIR.exists():
     CKP_DIR.mkdir(parents=True)
