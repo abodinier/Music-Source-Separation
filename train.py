@@ -1,5 +1,5 @@
-import nbformat
 import torch
+import argparse
 from torch import optim
 from pathlib import Path
 from datetime import datetime
@@ -13,12 +13,22 @@ from asteroid.asteroid.losses import pairwise_neg_sisdr, PITLossWrapper
 #####################
 ##### CONSTANTS #####
 #####################
+parser = argparse.ArgumentParser()
+parser.add_argument("--datadir", default="data", type=str)
+parser.add_argument("--size", default=None, type=int)
+parser.add_argument("--lr", default=1e-3, type=float)
+parser.add_argument("--epochs", default=100, type=int)
+parser.add_argument("--batchsize", default=32, type=int)
+parser.add_argument("--ckpdir", default="weights", type=str)
+args = parser.parse_args()
+
 SAMPLE_RATE = 44100
-DATA_DIR = Path("data")
-LR = 1e-3
-N_EPOCHS = 1
-BATCH_SIZE = 2
-CKP_DIR = Path("weights")
+DATA_DIR = Path(args.datadir)
+SIZE = args.size
+LR = args.lr
+N_EPOCHS = args.epochs
+BATCH_SIZE = args.batchsize
+CKP_DIR = Path(args.ckpdir)
 CKP_PATH = CKP_DIR/f"model_{datetime.now().strftime('%Y%m%d-%H%M%S')}.pth)"
 
 if not CKP_DIR.exists():
@@ -38,7 +48,8 @@ train_dataset = MUSDB18Dataset(
     samples_per_track=1,
     random_segments=True,
     random_track_mix=False,
-    sample_rate=SAMPLE_RATE
+    sample_rate=SAMPLE_RATE,
+    size=SIZE
 )
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE)
 print(">>> Training Dataloader ready")
@@ -53,7 +64,8 @@ test_dataset = MUSDB18Dataset(
     samples_per_track=1,
     random_segments=True,
     random_track_mix=False,
-    sample_rate=SAMPLE_RATE
+    sample_rate=SAMPLE_RATE,
+    size=SIZE
 )
 test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE)
 print(">>> TEST Dataloader ready")
@@ -93,7 +105,7 @@ def train(model, dataset, criterion, optim, epochs):
 
             loss.backward()
             optimizer.step()
-            print(f"Batch {n_batch} loss = {loss.item() / batch_size}")
+            # print(f"Batch {n_batch} loss = {loss.item() / batch_size}")
             
         epoch_loss /= data_counter
         print(f"Epoch {epoch} - Mean Loss: {epoch_loss}")
