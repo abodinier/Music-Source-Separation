@@ -237,7 +237,7 @@ class MUSDB18Dataset(torch.utils.data.Dataset):
                 #if not all(i.samplerate == self.sample_rate for i in infos):
                 #    print("Exclude track due to different sample rate ", track_path)
                 #    continue
-                sample_rates = [track_infos.audio_streams[i]['sample_rate'] for i in range(nb_sources)]
+                sample_rates = [track_infos.sample_rate(i) for i in range(nb_sources)]
                 if not all(i == self.sample_rate for i in sample_rates):
                     print("Exclude track due to different sample rate ", track_path)
                     continue

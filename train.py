@@ -14,7 +14,7 @@ from asteroid.losses import pairwise_neg_sisdr, PITLossWrapper
 ##### CONSTANTS #####
 #####################
 parser = argparse.ArgumentParser()
-parser.add_argument("--datadir", default="data", type=str)
+parser.add_argument("--datadir", default="musdb_data", type=str)
 parser.add_argument("--size", default=None, type=int)
 parser.add_argument("--lr", default=1e-3, type=float)
 parser.add_argument("--epochs", default=100, type=int)
