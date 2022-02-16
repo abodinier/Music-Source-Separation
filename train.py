@@ -5,9 +5,9 @@ from pathlib import Path
 from datetime import datetime
 from torch.utils.data import DataLoader
 
-from asteroid.asteroid.models import ConvTasNet
-from asteroid.asteroid.data import MUSDB18Dataset
-from asteroid.asteroid.losses import pairwise_neg_sisdr, PITLossWrapper
+from asteroid.models import ConvTasNet
+from asteroid.data import MUSDB18Dataset
+from asteroid.losses import pairwise_neg_sisdr, PITLossWrapper
 
 
 #####################
