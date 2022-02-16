@@ -222,7 +222,6 @@ class MUSDB18Dataset(torch.utils.data.Dataset):
                     continue
                 
                 track_infos = stempeg.Info(track_path)
-                print("track info", track_infos, "\n", dir(track_infos))
 
                 #source_paths = [track_path / (s + self.suffix) for s in self.sources]
                 #if not all(sp.exists() for sp in source_paths):
