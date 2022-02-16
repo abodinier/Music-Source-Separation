@@ -1,6 +1,0 @@
-[submodule "asteroid"]
-	path = asteroid
-	url = git@github.com:abodinier/asteroid.git
-[submodule "demucs"]
-	path = demucs
-	url = git@github.com:abodinier/demucs.git
