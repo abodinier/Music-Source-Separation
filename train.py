@@ -139,37 +139,129 @@ if args.restore is not None:
 ################
 ### TRAINING ###
 ################
-def train(model, dataset, criterion, optim, epochs):
-    print("\n>>> Begin training\n")
+def train(model, dataset, criterion, optimizer):
+    epoch_loss = 0
+    data_counter = 0
     
-    for epoch in range(epochs):
-        print(">>> EPOCH", epoch)
-        epoch_loss = 0
+    for n_batch, train_batch in enumerate(dataset):
+        optimizer.zero_grad()
+
+        x, y = train_batch
+        
+        output = model(x)
+
+        loss = criterion(output, y)
+        epoch_loss += loss.item()
+        
+        batch_size = x.shape[0]
+        data_counter += batch_size
+
+        loss.backward()
+        optimizer.step()
+        
+    epoch_loss /= data_counter
+    
+    return epoch_loss
+
+
+def test(model, dataset, criterion):
+    with torch.no_grad():
+        mean_loss = 0
         data_counter = 0
         
-        for n_batch, train_batch in enumerate(dataset):
-            optim.zero_grad()
-
-            x, y = train_batch
+        for n_batch, test_batch in enumerate(dataset):
+            x, y = test_batch
             
             output = model(x)
 
             loss = criterion(output, y)
-            epoch_loss += loss.item()
+            mean_loss += loss.item()
             
             batch_size = x.shape[0]
             data_counter += batch_size
 
-            loss.backward()
             optimizer.step()
-            # print(f"Batch {n_batch} loss = {loss.item() / batch_size}")
             
-        epoch_loss /= data_counter
-        print(f"Epoch {epoch} - Mean Loss: {epoch_loss}")
+        mean_loss /= data_counter
+    
+    return mean_loss
 
-train(model, train_loader, loss, optimizer, N_EPOCHS)
+
+def checkpoint(model, epoch, optimizer, lr_scheduler, best_loss, loss, ckp_dir, delta=1e-3):
+    if loss <= best_loss + delta:
+        torch.save(
+            {
+                'epoch': epoch,
+                'loss': loss,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'lr_scheduler': lr_scheduler.state_dict()
+            },
+            ckp_dir
+        )
+
+
+def fit(model, train_set, test_set, criterion, optimizer, lr_updater, epochs, history=None):
+    
+    if history is not None:
+        # Train from checkpoint:
+        
+        train_loss_history = list(history["train_loss"].values)
+        val_loss_history = list(history["val_loss"].values)
+        
+        start_epoch = len(train_loss_history)
+        print(f"\n>>> Restore training from EPOCH {start_epoch}\n")
+    
+    else:
+        # Train from scratch:
+        train_loss_history = list()
+        val_loss_history = list()
+        
+        start_epoch = 1
+        print("\n>>> Begin training from scratch\n")
+    
+    for epoch in range(start_epoch, start_epoch + epochs + 1):
+        print(">>> EPOCH", epoch)
+        
+        train_loss = train(model, train_set, criterion, optimizer)
+        lr_updater.step()
+        
+        val_loss = test(model, test_set, criterion)
+        
+        train_loss_history.append(train_loss)
+        val_loss_history.append(val_loss)
+        
+        best_loss = float('inf') if len(val_loss_history) == 0 else np.min(val_loss_history)
+        
+        # Save checkpoint:
+        checkpoint(model, epoch, optimizer, lr_updater, best_loss, val_loss, CKP_PATH_MODEL)
+        
+        # Save weights every 10 epochs:
+        if epoch % 10 == 0:
+            ckp_dir = str(CKP_PATH/f"model_epoch{epoch}.pth")
+            torch.save(
+            {
+                'epoch': epoch,
+                'loss': val_loss,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'lr_scheduler': lr_updater.state_dict()
+            },
+            ckp_dir
+        )
+
+        # Store the learning curves
+        history = pd.DataFrame(
+                {
+                    "train_loss": train_loss_history,
+                    "val_loss": val_loss_history,
+                }
+            )
+        history.index.name = "epoch"
+        history.to_csv(CKP_PATH_HISTORY)
+
 
 ################
-### Save #######
+### Train #######
 ################
-torch.save(model, CKP_PATH)
+fit(model, train_loader, test_loader, loss, optimizer, lr_updater, N_EPOCHS, history)
