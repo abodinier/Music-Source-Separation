@@ -1,8 +1,13 @@
+import yaml
 import torch
+import shutil
 import argparse
+import numpy as np
+import pandas as pd
 from torch import optim
 from pathlib import Path
 from datetime import datetime
+from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 
 from asteroid.models import ConvTasNet
@@ -11,28 +16,57 @@ from asteroid.losses import pairwise_neg_sisdr, PITLossWrapper
 
 
 #####################
-##### CONSTANTS #####
+##### ARGS ##########
 #####################
 parser = argparse.ArgumentParser()
-parser.add_argument("--datadir", default="musdb_data", type=str)
-parser.add_argument("--size", default=None, type=int)
-parser.add_argument("--lr", default=1e-3, type=float)
-parser.add_argument("--epochs", default=100, type=int)
-parser.add_argument("--batchsize", default=32, type=int)
+parser.add_argument("--cfg_path", default="cfg.yaml", type=str)
+parser.add_argument("--data_dir", default="musdb_data", type=str)
 parser.add_argument("--ckpdir", default="weights", type=str)
+parser.add_argument("--restore", default=None, type=str)
 args = parser.parse_args()
 
-SAMPLE_RATE = 44100
-DATA_DIR = Path(args.datadir)
-SIZE = args.size
-LR = args.lr
-N_EPOCHS = args.epochs
-BATCH_SIZE = args.batchsize
-CKP_DIR = Path(args.ckpdir)
-CKP_PATH = CKP_DIR/f"model_{datetime.now().strftime('%Y%m%d-%H%M%S')}.pth"
+CKP_PATH = Path(args.ckpdir)/f"training_{datetime.now().strftime('%Y%m%d-%H%M%S')}" if args.restore is None else Path(args.restore)
+CKP_PATH_MODEL = CKP_PATH/"model.pth"
+CKP_PATH_HISTORY = CKP_PATH/"history.csv"
+CKP_PATH_CFG = CKP_PATH/"cfg.yaml"
 
-if not CKP_DIR.exists():
-    CKP_DIR.mkdir(parents=True)
+if not CKP_PATH.is_dir():
+    CKP_PATH.mkdir(parents=True)
+
+if not CKP_PATH_CFG.exists():
+    shutil.copy(args.cfg_path, CKP_PATH_CFG)
+
+with open(str(CKP_PATH_CFG), 'r') as file:
+    CFG = yaml.load(file, Loader=yaml.FullLoader)
+
+DATA_DIR = Path(args.data_dir)
+SEGMENT_SIZE = CFG["segment_size"]
+RANDOM_TRACK_MIX = CFG["random_track_mix"]
+TARGETS = CFG["targets"]
+N_SRC = len(TARGETS)
+
+#####################
+##### HYPER-PARAMETERS
+#####################
+SAMPLE_RATE = CFG["sample_rate"]
+SIZE = CFG["size"]
+LR = CFG["learning_rate"]
+N_EPOCHS = CFG["n_epochs"]
+BATCH_SIZE = CFG["batch_size"]
+
+N_BLOCKS = CFG["n_blocks"]
+N_REPEATS = CFG["n_repeats"]
+BN_CHAN = CFG["bn_chan"]
+HID_CHAN = CFG["hid_chan"]
+SKIP_CHAN = CFG["skip_chan"]
+CONV_KERNEL_SIZE = CFG["conv_kernel_size"]
+KERNEL_SIZE = CFG["kernel_size"]
+N_FILTERS = CFG["n_filters"]
+STRIDE = CFG["stride"]
+
+
+if not CKP_PATH.exists():
+    CKP_PATH.mkdir(parents=True)
 
 
 ################
@@ -40,14 +74,14 @@ if not CKP_DIR.exists():
 ################
 train_dataset = MUSDB18Dataset(
     root=DATA_DIR.__str__(),
-    targets=["vocals", "bass", "drums", "other"],
+    targets=TARGETS,
     suffix=".mp4",
     split="train",
     subset=None,
-    segment=1,
+    segment=SEGMENT_SIZE,
     samples_per_track=1,
     random_segments=True,
-    random_track_mix=False,
+    random_track_mix=RANDOM_TRACK_MIX,
     sample_rate=SAMPLE_RATE,
     size=SIZE
 )
@@ -56,14 +90,14 @@ print(">>> Training Dataloader ready")
 
 test_dataset = MUSDB18Dataset(
     root=DATA_DIR.__str__(),
-    targets=["vocals", "bass", "drums", "other"],
+    targets=TARGETS,
     suffix=".mp4",
     split="test",
     subset=None,
-    segment=1,
+    segment=SEGMENT_SIZE,
     samples_per_track=1,
     random_segments=True,
-    random_track_mix=False,
+    random_track_mix=RANDOM_TRACK_MIX,
     sample_rate=SAMPLE_RATE,
     size=SIZE
 )
@@ -74,9 +108,32 @@ print(">>> TEST Dataloader ready")
 ################
 ##### MODEL ####
 ################
-model = ConvTasNet(n_src=4, sample_rate=SAMPLE_RATE)
+model = ConvTasNet(
+    n_src=N_SRC,
+    sample_rate=SAMPLE_RATE,
+    n_blocks=N_BLOCKS,
+    n_repeats=N_REPEATS,
+    bn_chan=BN_CHAN,
+    hid_chan=HID_CHAN,
+    skip_chan=SKIP_CHAN,
+    conv_kernel_size=CONV_KERNEL_SIZE,
+    norm_type="gLN",
+    mask_act="sigmoid",
+    kernel_size=KERNEL_SIZE,
+    n_filters=N_FILTERS,
+    stride=STRIDE)
+
 loss = PITLossWrapper(pairwise_neg_sisdr, pit_from="pw_mtx")
 optimizer = optim.Adam(model.parameters(), lr=LR)
+lr_updater = lr_scheduler.StepLR(optimizer, 20, 1e-2)
+history = None
+
+
+if args.restore is not None:
+    model.load_state_dict(torch.load(CKP_PATH_MODEL)["model_state_dict"])
+    optimizer.load_state_dict(torch.load(CKP_PATH_MODEL)["optimizer_state_dict"])
+    lr_updater.load_state_dict(torch.load(CKP_PATH_MODEL)["lr_scheduler"])
+    history = pd.read_csv(CKP_PATH_HISTORY)
 
 
 ################
