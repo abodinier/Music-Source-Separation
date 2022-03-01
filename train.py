@@ -49,7 +49,7 @@ N_SRC = len(TARGETS)
 ##### HYPER-PARAMETERS
 #####################
 SAMPLE_RATE = CFG["sample_rate"]
-SIZE = CFG["size"]
+SIZE = None if CFG["size"] == -1 else CFG["size"]
 LR = CFG["learning_rate"]
 N_EPOCHS = CFG["n_epochs"]
 BATCH_SIZE = CFG["batch_size"]
