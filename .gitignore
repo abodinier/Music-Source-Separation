@@ -4,3 +4,4 @@
 *.wav
 *.pkl
 musdb_data
+training_jobs/
