@@ -30,12 +30,16 @@ parser.add_argument("--restore", default=None, type=str)
 args = parser.parse_args()
 
 CKP_PATH = Path(args.ckpdir)/f"training_{datetime.now().strftime('%Y%m%d-%H%M%S')}" if args.restore is None else Path(args.restore)
+CKP_LOGS = CKP_PATH/"logs"
 CKP_PATH_MODEL = CKP_PATH/"model.pth"
 CKP_PATH_HISTORY = CKP_PATH/"history.csv"
 CKP_PATH_CFG = CKP_PATH/"cfg.yaml"
 
 if not CKP_PATH.is_dir():
     CKP_PATH.mkdir(parents=True)
+
+if not CKP_LOGS.is_dir():
+    CKP_LOGS.mkdir(parents=True)
 
 if not CKP_PATH_CFG.exists():
     shutil.copy(args.cfg_path, CKP_PATH_CFG)
@@ -49,6 +53,7 @@ RANDOM_TRACK_MIX = CFG["random_track_mix"]
 TARGETS = CFG["targets"]
 N_SRC = len(TARGETS)
 LOSS = eval(CFG["loss"])
+STORE_GRADIENT_NORM = CFG["store_gradient_norm"]
 
 #####################
 ##### HYPER-PARAMETERS
@@ -167,6 +172,16 @@ def train(model, dataset, criterion, optimizer, mse, epoch):
 
         optimizer.zero_grad()
         loss.backward()
+        if STORE_GRADIENT_NORM:
+            with open(CKP_LOGS/f"train_epoch{epoch}.log", "a") as log:
+                for layer in model.modules():
+                    try:
+                        name = layer.__str__()
+                        mean_grad = np.mean(layer.weight.grad.detach().numpy())
+                        print(">>> ",name, " grad =", mean_grad)
+                        log.write(f"NAME : {name}\nLOSS : {loss.item()}\nGRADIENT VALUES MEAN: {mean_grad}\n\n")
+                    except:
+                        pass
         optimizer.step()
         
     epoch_loss /= data_counter
