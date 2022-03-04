@@ -16,3 +16,4 @@ kernel_size: 16
 n_filters: 512
 stride: 8
 loss: "pairwise_mse"
+store_gradient_norm: True
