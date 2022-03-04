@@ -145,11 +145,12 @@ if args.restore is not None:
 ################
 ### TRAINING ###
 ################
-def train(model, dataset, criterion, optimizer):
+def train(model, dataset, criterion, optimizer, mse, epoch):
     model.train()
     torch.set_grad_enabled(True)
     
     epoch_loss = 0
+    epoch_mse_loss = 0
     data_counter = 0
     
     for n_batch, train_batch in enumerate(dataset):
@@ -158,6 +159,7 @@ def train(model, dataset, criterion, optimizer):
         output = model(x)
 
         loss = criterion(output, y)
+        epoch_mse_loss += mse(output, y).item()
         epoch_loss += loss.item()
         
         batch_size = x.shape[0]
@@ -168,13 +170,15 @@ def train(model, dataset, criterion, optimizer):
         optimizer.step()
         
     epoch_loss /= data_counter
+    epoch_mse_loss /= data_counter
     
-    return epoch_loss
+    return epoch_loss, epoch_mse_loss
 
 
-def test(model, dataset, criterion):
+def test(model, dataset, criterion, mse):
     with torch.no_grad():
         mean_loss = 0
+        mean_mse_loss = 0
         data_counter = 0
         
         for n_batch, test_batch in enumerate(dataset):
@@ -183,6 +187,7 @@ def test(model, dataset, criterion):
             output = model(x)
 
             loss = criterion(output, y)
+            mean_mse_loss += mse(output, y).item()
             mean_loss += loss.item()
             
             batch_size = x.shape[0]
@@ -191,8 +196,9 @@ def test(model, dataset, criterion):
             optimizer.step()
             
         mean_loss /= data_counter
+        mean_mse_loss /= data_counter
     
-    return mean_loss
+    return mean_loss, mean_mse_loss
 
 
 def checkpoint(model, epoch, optimizer, lr_scheduler, best_loss, loss, ckp_dir, delta=1e-3):
@@ -216,6 +222,9 @@ def fit(model, train_set, test_set, criterion, optimizer, lr_updater, epochs, hi
         
         train_loss_history = list(history["train_loss"].values)
         val_loss_history = list(history["val_loss"].values)
+        train_mse_loss_history = list(history["train_mse_loss"].values)
+        val_mse_loss_history = list(history["val_mse_loss"].values)
+        lr_history = list(history["lr_history"].values)
         
         start_epoch = len(train_loss_history)
         print(f"\n>>> Restore training from EPOCH {start_epoch}\n")
@@ -224,20 +233,30 @@ def fit(model, train_set, test_set, criterion, optimizer, lr_updater, epochs, hi
         # Train from scratch:
         train_loss_history = list()
         val_loss_history = list()
+        train_mse_loss_history = list()
+        val_mse_loss_history = list()
+        lr_history = list()
         
         start_epoch = 1
         print("\n>>> Begin training from scratch\n")
     
+    mse = PITLossWrapper(pairwise_mse, pit_from="pw_mtx")
+    
     for epoch in range(start_epoch, start_epoch + epochs + 1):
         print(">>> EPOCH", epoch)
         
-        train_loss = train(model, train_set, criterion, optimizer)
+        train_loss, train_mse_loss = train(model, train_set, criterion, optimizer, mse, epoch)
         lr_updater.step()
         
-        val_loss = test(model, test_set, criterion)
+        val_loss, val_mse_loss = test(model, test_set, criterion, mse)
+        
+        lr = lr_updater.get_lr()
         
         train_loss_history.append(train_loss)
+        train_mse_loss_history.append(train_mse_loss)
         val_loss_history.append(val_loss)
+        val_mse_loss_history.append(val_mse_loss)
+        lr_history.append(lr)
         
         best_loss = float('inf') if len(val_loss_history) == 0 else np.min(val_loss_history)
         
@@ -263,6 +282,9 @@ def fit(model, train_set, test_set, criterion, optimizer, lr_updater, epochs, hi
                 {
                     "train_loss": train_loss_history,
                     "val_loss": val_loss_history,
+                    "train_mse_loss": train_mse_loss,
+                    "val_mse_loss": val_mse_loss,
+                    "lr": lr_history
                 }
             )
         history.index.name = "epoch"
