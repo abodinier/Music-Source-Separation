@@ -265,7 +265,7 @@ def fit(model, train_set, test_set, criterion, optimizer, lr_updater, epochs, hi
         
         val_loss, val_mse_loss = test(model, test_set, criterion, mse)
         
-        lr = lr_updater.get_lr()
+        lr = lr_updater.get_last_lr()[0]
         
         train_loss_history.append(train_loss)
         train_mse_loss_history.append(train_mse_loss)
