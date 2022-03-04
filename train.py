@@ -54,6 +54,7 @@ TARGETS = CFG["targets"]
 N_SRC = len(TARGETS)
 LOSS = eval(CFG["loss"])
 STORE_GRADIENT_NORM = CFG["store_gradient_norm"]
+VERBOSE = CFG["verbose"]
 
 #####################
 ##### HYPER-PARAMETERS
@@ -74,6 +75,10 @@ KERNEL_SIZE = CFG["kernel_size"]
 N_FILTERS = CFG["n_filters"]
 STRIDE = CFG["stride"]
 
+print("\n>>> PARAMETERS")
+for key, value in CFG.items():
+    print(f"\t>>> {key.upper()} -> {value}")
+print("\n\n")
 
 if not CKP_PATH.exists():
     CKP_PATH.mkdir(parents=True)
@@ -96,7 +101,7 @@ train_dataset = MUSDB18Dataset(
     size=SIZE
 )
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE)
-print(">>> Training Dataloader ready")
+print(">>> Training Dataloader ready\n")
 
 test_dataset = MUSDB18Dataset(
     root=DATA_DIR.__str__(),
@@ -112,7 +117,7 @@ test_dataset = MUSDB18Dataset(
     size=SIZE
 )
 test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE)
-print(">>> TEST Dataloader ready")
+print(">>> TEST Dataloader ready\n")
 
 
 ################
@@ -165,7 +170,7 @@ def train(model, dataset, criterion, optimizer, mse, epoch):
         
         output = model(x)
 
-        loss = criterion(output, y)
+        loss = 10e4 * criterion(output, y)
         epoch_mse_loss += mse(output, y).item()
         epoch_loss += loss.item()
         
@@ -180,12 +185,24 @@ def train(model, dataset, criterion, optimizer, mse, epoch):
                     try:
                         name = layer.__str__()
                         mean_grad = np.mean(layer.weight.grad.detach().numpy())
-                        print(">>> ",name, " grad =", mean_grad)
+                        if VERBOSE == 1:
+                            print(">>> ",name, " grad =", mean_grad)
                         log.write(f"NAME : {name}\nLOSS : {loss.item()}\nGRADIENT VALUES MEAN: {mean_grad}\n\n")
                     except:
                         pass
         
         optimizer.step()
+        
+        if False:
+            torch.save(
+                {
+                    'epoch': epoch,
+                    'loss': loss,
+                    'model_state_dict': model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                },
+                CKP_PATH/f"model_{epoch}.pth"
+            )
         
     epoch_loss /= data_counter
     epoch_mse_loss /= data_counter
@@ -194,6 +211,8 @@ def train(model, dataset, criterion, optimizer, mse, epoch):
 
 
 def test(model, dataset, criterion, mse):
+    model.eval()
+    
     with torch.no_grad():
         mean_loss = 0
         mean_mse_loss = 0
