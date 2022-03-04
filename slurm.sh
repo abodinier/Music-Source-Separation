@@ -24,7 +24,6 @@ hostname
 echo --------------------------------------
 echo --------------------------------------
 pwd
-#cd Projets/Music-Source-Separation
 echo --------------------------------------
 echo --------------------------------------
 
@@ -33,4 +32,4 @@ module load anaconda-py3
 
 conda activate pytorch
 
-CL_SOCKET_IFNAME=eno1 python test.py
+CL_SOCKET_IFNAME=eno1 python train.py --data_dir /gpfsdswork/dataset/MUSDB18/ --ckpdir weights --cfg_path cfg.yaml
