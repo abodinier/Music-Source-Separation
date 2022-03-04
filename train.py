@@ -12,7 +12,11 @@ from torch.utils.data import DataLoader
 
 from asteroid.models import ConvTasNet
 from asteroid.data import MUSDB18Dataset
-from asteroid.losses import pairwise_neg_sisdr, PITLossWrapper
+from asteroid.losses import PITLossWrapper
+from asteroid.losses import pairwise_neg_sisdr
+from asteroid.losses import pairwise_neg_sdsdr
+from asteroid.losses import pairwise_neg_snr
+from asteroid.losses import pairwise_mse
 
 
 #####################
@@ -44,6 +48,7 @@ SEGMENT_SIZE = CFG["segment_size"]
 RANDOM_TRACK_MIX = CFG["random_track_mix"]
 TARGETS = CFG["targets"]
 N_SRC = len(TARGETS)
+LOSS = eval(CFG["loss"])
 
 #####################
 ##### HYPER-PARAMETERS
@@ -121,9 +126,10 @@ model = ConvTasNet(
     mask_act="sigmoid",
     kernel_size=KERNEL_SIZE,
     n_filters=N_FILTERS,
-    stride=STRIDE)
+    stride=STRIDE
+)
 
-loss = PITLossWrapper(pairwise_neg_sisdr, pit_from="pw_mtx")
+loss = PITLossWrapper(LOSS, pit_from="pw_mtx")
 optimizer = optim.Adam(model.parameters(), lr=LR)
 lr_updater = lr_scheduler.StepLR(optimizer, 20, 1e-2)
 history = None
