@@ -146,12 +146,13 @@ if args.restore is not None:
 ### TRAINING ###
 ################
 def train(model, dataset, criterion, optimizer):
+    model.train()
+    torch.set_grad_enabled(True)
+    
     epoch_loss = 0
     data_counter = 0
     
     for n_batch, train_batch in enumerate(dataset):
-        optimizer.zero_grad()
-
         x, y = train_batch
         
         output = model(x)
@@ -162,6 +163,7 @@ def train(model, dataset, criterion, optimizer):
         batch_size = x.shape[0]
         data_counter += batch_size
 
+        optimizer.zero_grad()
         loss.backward()
         optimizer.step()
         
@@ -268,6 +270,6 @@ def fit(model, train_set, test_set, criterion, optimizer, lr_updater, epochs, hi
 
 
 ################
-### Train #######
+### Train ######
 ################
 fit(model, train_loader, test_loader, loss, optimizer, lr_updater, N_EPOCHS, history)
