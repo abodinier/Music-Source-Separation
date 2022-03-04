@@ -159,6 +159,8 @@ def train(model, dataset, criterion, optimizer, mse, epoch):
     data_counter = 0
     
     for n_batch, train_batch in enumerate(dataset):
+        optimizer.zero_grad()
+        
         x, y = train_batch
         
         output = model(x)
@@ -170,8 +172,8 @@ def train(model, dataset, criterion, optimizer, mse, epoch):
         batch_size = x.shape[0]
         data_counter += batch_size
 
-        optimizer.zero_grad()
         loss.backward()
+        
         if STORE_GRADIENT_NORM:
             with open(CKP_LOGS/f"train_epoch{epoch}.log", "a") as log:
                 for layer in model.modules():
@@ -182,6 +184,7 @@ def train(model, dataset, criterion, optimizer, mse, epoch):
                         log.write(f"NAME : {name}\nLOSS : {loss.item()}\nGRADIENT VALUES MEAN: {mean_grad}\n\n")
                     except:
                         pass
+        
         optimizer.step()
         
     epoch_loss /= data_counter
