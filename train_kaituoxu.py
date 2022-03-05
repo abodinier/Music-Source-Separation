@@ -64,7 +64,8 @@ SAMPLE_RATE = CFG["sample_rate"]
 SIZE = None if CFG["size"] == -1 else CFG["size"]
 LR = CFG["learning_rate"]
 N_EPOCHS = CFG["n_epochs"]
-BATCH_SIZE = CFG["batch_size"]
+TRAIN_BATCH_SIZE = CFG["train_batch_size"]
+TEST_BATCH_SIZE = CFG["test_batch_size"]
 
 N_BLOCKS = CFG["n_blocks"]
 N_REPEATS = CFG["n_repeats"]
@@ -102,7 +103,7 @@ train_dataset = MUSDB18Dataset(
     sample_rate=SAMPLE_RATE,
     size=SIZE
 )
-train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE)
+train_loader = DataLoader(train_dataset, batch_size=TRAIN_BATCH_SIZE)
 print(">>> Training Dataloader ready\n")
 
 test_dataset = MUSDB18Dataset(
@@ -118,7 +119,7 @@ test_dataset = MUSDB18Dataset(
     sample_rate=SAMPLE_RATE,
     size=SIZE
 )
-test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE)
+test_loader = DataLoader(test_dataset, batch_size=TEST_BATCH_SIZE)
 print(">>> TEST Dataloader ready\n")
 
 
