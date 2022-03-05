@@ -157,7 +157,7 @@ if args.restore is not None:
 ################
 ### TRAINING ###
 ################
-def train(model, dataset, criterion, optimizer, mse, epoch):
+def train(model, dataset, criterion, optimizer, mse, epoch, lr=None):
     model.train()
     torch.set_grad_enabled(True)
     
@@ -172,30 +172,43 @@ def train(model, dataset, criterion, optimizer, mse, epoch):
         
         output = model(x)
 
-        loss = 10e4 * criterion(output, y)
+        loss = criterion(output, y)
+        loss.backward()
+        
         epoch_mse_loss += mse(output, y).item()
         epoch_loss += loss.item()
         
         batch_size = x.shape[0]
         data_counter += batch_size
 
-        loss.backward()
         
         if STORE_GRADIENT_NORM:
             with open(CKP_LOGS/f"train_epoch{epoch}.log", "a") as log:
                 for layer in model.modules():
                     try:
                         name = layer.__str__()
-                        mean_grad = np.mean(layer.weight.grad.detach().numpy())
+                        min_grad = np.min(np.abs(layer.weight.grad.detach().numpy()))
+                        mean_grad = np.mean(np.abs(layer.weight.grad.detach().numpy()))
+                        max_grad = np.max(np.abs(layer.weight.grad.detach().numpy()))
+                        info = f">>> NAME : {name} | LOSS = {loss.item()} | min grad = {min_grad} | max grad = {max_grad} | mean grad = {mean_grad}\n\n"
                         if VERBOSE == 1:
-                            print(">>> ",name, " grad =", mean_grad)
-                        log.write(f"NAME : {name}\nLOSS : {loss.item()}\nGRADIENT VALUES MEAN: {mean_grad}\n\n")
+                            print(info)
+                        log.write(info)
                     except:
                         pass
-        
-        optimizer.step()
-        
         if False:
+            optimizer.step()
+        else:
+            
+            # update parameters manually (no optimizer) with gradient clipping
+            torch.nn.utils.clip_grad_norm_(model.parameters(), CLIP)
+            for p in model.parameters():
+                try:
+                    p.data.add_(p.grad, alpha=-lr)
+                except:
+                    pass
+        
+        if SAVE_WEIGHTS_EACH_EPOCH:
             torch.save(
                 {
                     'epoch': epoch,
@@ -280,16 +293,15 @@ def fit(model, train_set, test_set, criterion, optimizer, lr_updater, epochs, hi
         print("\n>>> Begin training from scratch\n")
     
     mse = PITLossWrapper(pairwise_mse, pit_from="pw_mtx")
+    lr = lr_updater.get_last_lr()[0]
     
     for epoch in range(start_epoch, start_epoch + epochs + 1):
         print(">>> EPOCH", epoch)
         
-        train_loss, train_mse_loss = train(model, train_set, criterion, optimizer, mse, epoch)
+        train_loss, train_mse_loss = train(model, train_set, criterion, optimizer, mse, epoch, lr=lr)
         lr_updater.step()
         
         val_loss, val_mse_loss = test(model, test_set, criterion, mse)
-        
-        lr = lr_updater.get_last_lr()[0]
         
         train_loss_history.append(train_loss)
         train_mse_loss_history.append(train_mse_loss)
