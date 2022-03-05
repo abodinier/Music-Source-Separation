@@ -55,6 +55,7 @@ N_SRC = len(TARGETS)
 LOSS = eval(CFG["loss"])
 STORE_GRADIENT_NORM = CFG["store_gradient_norm"]
 VERBOSE = CFG["verbose"]
+SAVE_WEIGHTS_EACH_EPOCH = CFG["save_weights_each_epoch"]
 
 #####################
 ##### HYPER-PARAMETERS
@@ -74,6 +75,7 @@ CONV_KERNEL_SIZE = CFG["conv_kernel_size"]
 KERNEL_SIZE = CFG["kernel_size"]
 N_FILTERS = CFG["n_filters"]
 STRIDE = CFG["stride"]
+CLIP = CFG["gradient_clipping"]
 
 print("\n>>> PARAMETERS")
 for key, value in CFG.items():
