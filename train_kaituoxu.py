@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from torch import optim
 from pathlib import Path
+from scipy.io import wavfile
 from datetime import datetime
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
@@ -126,13 +127,13 @@ print(">>> TEST Dataloader ready\n")
 ################
 model = ConvTasNet(
     C=N_SRC,
-    X=N_BLOCKS,
-    R=N_REPEATS,
-    B=BN_CHAN,
-    H=HID_CHAN,
-    P=CONV_KERNEL_SIZE,
-    L=KERNEL_SIZE,
-    N=N_FILTERS
+    X=8,
+    R=3,
+    B=128,
+    H=512,
+    P=3,
+    L=16,
+    N=512
 )
 
 loss = cal_loss
@@ -164,6 +165,17 @@ def train(model, dataset, criterion, optimizer, mse, epoch, lr=None):
         optimizer.zero_grad()
         
         x, y = train_batch
+        
+        if epoch == 1:
+            for i in range(x.shape[0]):
+                path = CKP_PATH/f"epoch_{epoch}_track_{i}"
+                if not path.is_dir():
+                    path.mkdir()
+                wavfile.write(path/"mixture.wav", SAMPLE_RATE, x[i].detach().numpy())
+                for j, s in enumerate(y[i]):
+                    name = path/f"{j}.wav"
+                    wavfile.write(str(name), SAMPLE_RATE, s.detach().numpy())
+    
         batch_size = x.shape[0]
         length = x.shape[-1]
         signal_length = length * torch.ones(batch_size)
@@ -188,7 +200,7 @@ def train(model, dataset, criterion, optimizer, mse, epoch, lr=None):
                         min_grad = np.min(np.abs(layer.weight.grad.detach().numpy()))
                         mean_grad = np.mean(np.abs(layer.weight.grad.detach().numpy()))
                         max_grad = np.max(np.abs(layer.weight.grad.detach().numpy()))
-                        info = f">>> NAME : {name} | LOSS = {loss.item()} | min grad = {min_grad} | max grad = {max_grad} | mean grad = {mean_grad}"
+                        info = f">>> NAME : {name} | LOSS = {loss.item()} | min grad = {min_grad} | max grad = {max_grad} | mean grad = {mean_grad}\n"
                         if VERBOSE == 1:
                             print(info)
                         log.write(info)
