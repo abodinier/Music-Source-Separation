@@ -1,5 +1,8 @@
 .env
-data
+*.pyc
 *.mp3
 *.wav
 *.pkl
+musdb_data
+training_jobs/
+weights/

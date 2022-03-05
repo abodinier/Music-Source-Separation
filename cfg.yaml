@@ -1,0 +1,22 @@
+sample_rate: 44100
+size: -1
+learning_rate: 0.001
+n_epochs: 100
+batch_size: 64
+segment_size: 1
+random_track_mix: False
+targets: ["drums", "bass", "other", "vocals"]
+n_blocks: 8
+n_repeats: 3
+bn_chan: 128
+hid_chan: 512
+skip_chan: 128
+conv_kernel_size: 3
+kernel_size: 16
+n_filters: 512
+stride: 8
+loss: "pairwise_mse"
+store_gradient_norm: True
+verbose: 1
+gradient_clipping: 5
+save_weights_each_epoch: False
