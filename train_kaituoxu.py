@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from torch import optim
 from pathlib import Path
+from scipy.io import wavfile
 from datetime import datetime
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
@@ -63,16 +64,17 @@ SAMPLE_RATE = CFG["sample_rate"]
 SIZE = None if CFG["size"] == -1 else CFG["size"]
 LR = CFG["learning_rate"]
 N_EPOCHS = CFG["n_epochs"]
-BATCH_SIZE = CFG["batch_size"]
+TRAIN_BATCH_SIZE = CFG["train_batch_size"]
+TEST_BATCH_SIZE = CFG["test_batch_size"]
 
-N_BLOCKS = CFG["n_blocks"]
-N_REPEATS = CFG["n_repeats"]
-BN_CHAN = CFG["bn_chan"]
-HID_CHAN = CFG["hid_chan"]
-SKIP_CHAN = CFG["skip_chan"]
-CONV_KERNEL_SIZE = CFG["conv_kernel_size"]
-KERNEL_SIZE = CFG["kernel_size"]
-N_FILTERS = CFG["n_filters"]
+X = CFG["X"]
+R = CFG["R"]
+B = CFG["B"]
+H = CFG["H"]
+Sc = CFG["Sc"]
+P = CFG["P"]
+L = CFG["L"]
+N = CFG["N"]
 STRIDE = CFG["stride"]
 CLIP = CFG["gradient_clipping"]
 
@@ -101,7 +103,7 @@ train_dataset = MUSDB18Dataset(
     sample_rate=SAMPLE_RATE,
     size=SIZE
 )
-train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE)
+train_loader = DataLoader(train_dataset, batch_size=TRAIN_BATCH_SIZE)
 print(">>> Training Dataloader ready\n")
 
 test_dataset = MUSDB18Dataset(
@@ -117,7 +119,7 @@ test_dataset = MUSDB18Dataset(
     sample_rate=SAMPLE_RATE,
     size=SIZE
 )
-test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE)
+test_loader = DataLoader(test_dataset, batch_size=TEST_BATCH_SIZE)
 print(">>> TEST Dataloader ready\n")
 
 
@@ -126,13 +128,14 @@ print(">>> TEST Dataloader ready\n")
 ################
 model = ConvTasNet(
     C=N_SRC,
-    X=N_BLOCKS,
-    R=N_REPEATS,
-    B=BN_CHAN,
-    H=HID_CHAN,
-    P=CONV_KERNEL_SIZE,
-    L=KERNEL_SIZE,
-    N=N_FILTERS
+    X=X,
+    R=R,
+    B=B,
+    H=H,
+    P=P,
+    L=L,
+    N=N,
+    mask_nonlinear="softmax"
 )
 
 loss = cal_loss
@@ -164,6 +167,17 @@ def train(model, dataset, criterion, optimizer, mse, epoch, lr=None):
         optimizer.zero_grad()
         
         x, y = train_batch
+        
+        if epoch == 1:
+            for i in range(x.shape[0]):
+                path = CKP_PATH/f"epoch_{epoch}_track_{i}"
+                if not path.is_dir():
+                    path.mkdir()
+                wavfile.write(path/"mixture.wav", SAMPLE_RATE, x[i].detach().numpy())
+                for j, s in enumerate(y[i]):
+                    name = path/f"{j}.wav"
+                    wavfile.write(str(name), SAMPLE_RATE, s.detach().numpy())
+    
         batch_size = x.shape[0]
         length = x.shape[-1]
         signal_length = length * torch.ones(batch_size)
@@ -188,7 +202,7 @@ def train(model, dataset, criterion, optimizer, mse, epoch, lr=None):
                         min_grad = np.min(np.abs(layer.weight.grad.detach().numpy()))
                         mean_grad = np.mean(np.abs(layer.weight.grad.detach().numpy()))
                         max_grad = np.max(np.abs(layer.weight.grad.detach().numpy()))
-                        info = f">>> NAME : {name} | LOSS = {loss.item()} | min grad = {min_grad} | max grad = {max_grad} | mean grad = {mean_grad}"
+                        info = f">>> NAME : {name} | LOSS = {loss.item()} | min grad = {min_grad} | max grad = {max_grad} | mean grad = {mean_grad}\n"
                         if VERBOSE == 1:
                             print(info)
                         log.write(info)
