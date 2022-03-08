@@ -208,6 +208,7 @@ class MUSDB18Dataset(torch.utils.data.Dataset):
             audio_sources = torch.stack(
                 [wav for src, wav in audio_sources.items() if src in self.targets], dim=0
             )
+            audio_mix = torch.stack(list(audio_sources.values())).sum(0)
         return audio_mix, audio_sources
 
     def __len__(self):
