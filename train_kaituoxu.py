@@ -67,14 +67,14 @@ N_EPOCHS = CFG["n_epochs"]
 TRAIN_BATCH_SIZE = CFG["train_batch_size"]
 TEST_BATCH_SIZE = CFG["test_batch_size"]
 
-N_BLOCKS = CFG["n_blocks"]
-N_REPEATS = CFG["n_repeats"]
-BN_CHAN = CFG["bn_chan"]
-HID_CHAN = CFG["hid_chan"]
-SKIP_CHAN = CFG["skip_chan"]
-CONV_KERNEL_SIZE = CFG["conv_kernel_size"]
-KERNEL_SIZE = CFG["kernel_size"]
-N_FILTERS = CFG["n_filters"]
+X = CFG["X"]
+R = CFG["R"]
+B = CFG["B"]
+H = CFG["H"]
+Sc = CFG["Sc"]
+P = CFG["P"]
+L = CFG["L"]
+N = CFG["N"]
 STRIDE = CFG["stride"]
 CLIP = CFG["gradient_clipping"]
 
@@ -128,13 +128,14 @@ print(">>> TEST Dataloader ready\n")
 ################
 model = ConvTasNet(
     C=N_SRC,
-    X=8,
-    R=3,
-    B=128,
-    H=512,
-    P=3,
-    L=16,
-    N=512
+    X=X,
+    R=R,
+    B=B,
+    H=H,
+    P=P,
+    L=L,
+    N=N,
+    mask_nonlinear="softmax"
 )
 
 loss = cal_loss
