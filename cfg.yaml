@@ -18,6 +18,6 @@ N: 512
 stride: 8
 loss: "pairwise_mse"
 store_gradient_norm: True
-verbose: 1
+verbose: 0
 gradient_clipping: 5
 save_weights_each_epoch: False
