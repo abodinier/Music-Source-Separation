@@ -3,6 +3,6 @@
 *.mp3
 *.wav
 *.pkl
-musdb_data
+musdb_data*
 training_jobs/
 weights/
