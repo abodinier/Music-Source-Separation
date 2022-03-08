@@ -189,7 +189,8 @@ class MUSDB18Dataset(torch.utils.data.Dataset):
                 filename=filepath,
                 start=start,
                 duration=self.segment,
-                stem_id=idx
+                stem_id=idx,
+                sample_rate=self.sample_rate
             )
             if self.mono:
                 audio = librosa.to_mono(audio.T)
@@ -237,10 +238,10 @@ class MUSDB18Dataset(torch.utils.data.Dataset):
                 #if not all(i.samplerate == self.sample_rate for i in infos):
                 #    print("Exclude track due to different sample rate ", track_path)
                 #    continue
-                sample_rates = [track_infos.rate(i) for i in range(nb_sources)]
-                if not all(i == self.sample_rate for i in sample_rates):
-                    print("Exclude track due to different sample rate ", track_path)
-                    continue
+                #sample_rates = [track_infos.rate(i) for i in range(nb_sources)]
+                #if not all(i == self.sample_rate for i in sample_rates):
+                #    print("Exclude track due to different sample rate ", track_path)
+                #    continue
 
                 #if self.segment is not None:
                 #    # get minimum duration of track
