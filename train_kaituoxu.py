@@ -323,9 +323,9 @@ def fit(model, train_set, test_set, criterion, optimizer, lr_updater, epochs, hi
         
         lr = optimizer.param_groups[0]['lr']
         train_loss, train_mse_loss, train_snr = train(model, train_set, criterion, optimizer, mse, epoch)
-        lr_updater.step()
         
         val_loss, val_mse_loss, val_snr = test(model, test_set, criterion, mse)
+        lr_updater.step(val_loss)
         
         train_loss_history.append(train_loss)
         train_mse_loss_history.append(train_mse_loss)
