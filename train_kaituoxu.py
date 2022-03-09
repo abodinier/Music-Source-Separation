@@ -14,7 +14,8 @@ from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 
 from kaituoxu.conv_tasnet import ConvTasNet
-from kaituoxu.pit_criterion import cal_loss
+from kaituoxu.pit_criterion import cal_loss as si_snr
+from torch.nn.functional import l1_loss, mse_loss
 
 from asteroid.data import MUSDB18Dataset
 from asteroid.losses import PITLossWrapper
@@ -75,6 +76,7 @@ LR = CFG["learning_rate"]
 N_EPOCHS = CFG["n_epochs"]
 TRAIN_BATCH_SIZE = CFG["train_batch_size"]
 TEST_BATCH_SIZE = CFG["test_batch_size"]
+NUM_WORKERS = CFG["num_workers"]
 
 X = CFG["X"]
 R = CFG["R"]
@@ -112,7 +114,7 @@ train_dataset = MUSDB18Dataset(
     sample_rate=SAMPLE_RATE,
     size=SIZE
 )
-train_loader = DataLoader(train_dataset, batch_size=TRAIN_BATCH_SIZE, num_workers=2)
+train_loader = DataLoader(train_dataset, batch_size=TRAIN_BATCH_SIZE, num_workers=NUM_WORKERS)
 print(">>> Training Dataloader ready\n")
 
 test_dataset = MUSDB18Dataset(
@@ -128,7 +130,7 @@ test_dataset = MUSDB18Dataset(
     sample_rate=SAMPLE_RATE,
     size=SIZE
 )
-test_loader = DataLoader(test_dataset, batch_size=TEST_BATCH_SIZE, num_workers=2)
+test_loader = DataLoader(test_dataset, batch_size=TEST_BATCH_SIZE, num_workers=NUM_WORKERS)
 print(">>> TEST Dataloader ready\n")
 
 
@@ -147,7 +149,7 @@ model = ConvTasNet(
     mask_nonlinear="softmax"
 )
 
-loss = cal_loss
+loss = LOSS
 optimizer = optim.Adam(model.parameters(), lr=LR)
 lr_updater = lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, factor=0.1)
 history = None
@@ -193,7 +195,11 @@ def train(model, dataset, criterion, optimizer, mse, epoch):
         
         output = model(x)
 
-        loss, max_snr, estimate_source, reorder_estimate_source = criterion(output, y, signal_length)
+        if CFG["loss"] == "si_snr":
+            loss, max_snr, estimate_source, reorder_estimate_source = criterion(output, y, signal_length)
+        if CFG["loss"] in ("l1_loss", "mse_loss"):
+            loss = criterion(output, y)
+            max_snr = torch.zeros(2)
         loss.backward()
         
         epoch_mse_loss += mse(output, y).item()
@@ -256,7 +262,11 @@ def test(model, dataset, criterion, mse):
             
             output = model(x)
 
-            loss, max_snr, estimate_source, reorder_estimate_source = criterion(output, y, signal_length)
+            if CFG["loss"] == "si_snr":
+                loss, max_snr, estimate_source, reorder_estimate_source = criterion(output, y, signal_length)
+            if CFG["loss"] in ("l1_loss", "mse_loss"):
+                loss = criterion(output, y)
+                max_snr = torch.zeros(2)
             
             mean_mse_loss += mse(output, y).item()
             mean_loss += loss.item()
