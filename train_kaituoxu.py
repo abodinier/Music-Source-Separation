@@ -163,7 +163,7 @@ if args.restore is not None:
 ################
 ### TRAINING ###
 ################
-def train(model, dataset, criterion, optimizer, mse, epoch, lr=None):
+def train(model, dataset, criterion, optimizer, mse, epoch):
     model.train()
     torch.set_grad_enabled(True)
     
@@ -321,8 +321,8 @@ def fit(model, train_set, test_set, criterion, optimizer, lr_updater, epochs, hi
     for epoch in range(start_epoch, start_epoch + epochs + 1):
         print(">>> EPOCH", epoch)
         
-        lr = lr_updater.get_last_lr()[0]
-        train_loss, train_mse_loss, train_snr = train(model, train_set, criterion, optimizer, mse, epoch, lr=lr)
+        lr = optimizer.param_groups[0]['lr']
+        train_loss, train_mse_loss, train_snr = train(model, train_set, criterion, optimizer, mse, epoch)
         lr_updater.step()
         
         val_loss, val_mse_loss, val_snr = test(model, test_set, criterion, mse)
