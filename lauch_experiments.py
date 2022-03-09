@@ -3,8 +3,6 @@ from pathlib import Path
 
 def lauch_experiment(path):
     command = f"sbatch {path}"
-    print(command)
-    return
     try:
         subprocess.check_call(command, shell=True)
     except subprocess.CalledProcessError as e:
