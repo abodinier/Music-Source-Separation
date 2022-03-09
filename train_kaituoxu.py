@@ -140,7 +140,7 @@ model = ConvTasNet(
 
 loss = cal_loss
 optimizer = optim.Adam(model.parameters(), lr=LR)
-lr_updater = lr_scheduler.StepLR(optimizer, 20, 1e-2)
+lr_updater = lr_scheduler.StepLR(optimizer, 10, 1e-1)
 history = None
 
 
