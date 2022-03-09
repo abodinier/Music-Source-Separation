@@ -1,6 +1,8 @@
+import time
 import yaml
 import torch
 import shutil
+import random
 import argparse
 import numpy as np
 import pandas as pd
@@ -29,6 +31,8 @@ parser.add_argument("--ckpdir", default="weights", type=str)
 parser.add_argument("--restore", default=None, type=str)
 parser.add_argument("--description", default=None, type=str)
 args = parser.parse_args()
+
+time.sleep(1. + 5 * random.random())  # avoid problems creating multiple training dir simultaneously
 
 CKP_PATH = Path(args.ckpdir)/f"training_{datetime.now().strftime('%Y%m%d-%H%M%S')}" if args.restore is None else Path(args.restore)
 CKP_LOGS = CKP_PATH/"logs"
