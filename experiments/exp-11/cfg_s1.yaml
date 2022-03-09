@@ -21,3 +21,4 @@ store_gradient_norm: True
 verbose: 0
 gradient_clipping: 5
 save_weights_each_epoch: False
+num_workers: 2
