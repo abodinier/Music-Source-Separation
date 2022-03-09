@@ -103,7 +103,7 @@ train_dataset = MUSDB18Dataset(
     sample_rate=SAMPLE_RATE,
     size=SIZE
 )
-train_loader = DataLoader(train_dataset, batch_size=TRAIN_BATCH_SIZE)
+train_loader = DataLoader(train_dataset, batch_size=TRAIN_BATCH_SIZE, num_workers=2)
 print(">>> Training Dataloader ready\n")
 
 test_dataset = MUSDB18Dataset(
@@ -119,7 +119,7 @@ test_dataset = MUSDB18Dataset(
     sample_rate=SAMPLE_RATE,
     size=SIZE
 )
-test_loader = DataLoader(test_dataset, batch_size=TEST_BATCH_SIZE)
+test_loader = DataLoader(test_dataset, batch_size=TEST_BATCH_SIZE, num_workers=2)
 print(">>> TEST Dataloader ready\n")
 
 
@@ -308,11 +308,11 @@ def fit(model, train_set, test_set, criterion, optimizer, lr_updater, epochs, hi
         print("\n>>> Begin training from scratch\n")
     
     mse = PITLossWrapper(pairwise_mse, pit_from="pw_mtx")
-    lr = lr_updater.get_last_lr()[0]
     
     for epoch in range(start_epoch, start_epoch + epochs + 1):
         print(">>> EPOCH", epoch)
         
+        lr = lr_updater.get_last_lr()[0]
         train_loss, train_mse_loss, train_snr = train(model, train_set, criterion, optimizer, mse, epoch, lr=lr)
         lr_updater.step()
         
