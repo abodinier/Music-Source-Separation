@@ -15,7 +15,7 @@
 ##sbatCH --mem-per-cpu=10000
 #SBATCH --qos=qos_gpu-t4 # Pour specifier une QoS différente du défaut, vous pouvez au choix : - qos_gpu-t3 (défaut)  20h  96 noeuds- qos_gpu-t4  100h 1 noeud- qos_gpu-dev 2h  4 noeuds
 #SBATCH --hint=nomultithread
-exp-
+
 
 #SBATCH --account=ldr@gpu
 

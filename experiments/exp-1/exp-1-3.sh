@@ -1,10 +1,6 @@
 #!/bin/sh
 
-<<<<<<< HEAD
 #SBATCH --job-name=low_sr          # name of the job UQS37
-=======
-#SBATCH --job-name=UQS37          # name of the job UQS37
->>>>>>> df5dabdc3f9e7355265c8f958c0987908dd27467
 #SBATCH --partition=gpu_p2      # request for allocation on the CPU partition
 #SBATCH --ntasks=1                  # number of tasks (a single process here)
 #SBATCH --cpus-per-task=2       # number of OpenMP threads
