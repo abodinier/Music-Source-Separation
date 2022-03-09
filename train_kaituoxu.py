@@ -27,6 +27,7 @@ parser.add_argument("--cfg_path", default="cfg.yaml", type=str)
 parser.add_argument("--data_dir", default="musdb_data", type=str)
 parser.add_argument("--ckpdir", default="weights", type=str)
 parser.add_argument("--restore", default=None, type=str)
+parser.add_argument("--description", default=None, type=str)
 args = parser.parse_args()
 
 CKP_PATH = Path(args.ckpdir)/f"training_{datetime.now().strftime('%Y%m%d-%H%M%S')}" if args.restore is None else Path(args.restore)
@@ -46,6 +47,10 @@ if not CKP_PATH_CFG.exists():
 
 with open(str(CKP_PATH_CFG), 'r') as file:
     CFG = yaml.load(file, Loader=yaml.FullLoader)
+
+if args.description is not None:
+    with open(str(CKP_PATH/"description"), "w") as desc:
+        desc.write(args.description)
 
 DATA_DIR = Path(args.data_dir)
 SEGMENT_SIZE = CFG["segment_size"]
