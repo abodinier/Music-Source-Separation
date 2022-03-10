@@ -39,7 +39,7 @@ CKP_PATH = Path(args.ckpdir)/f"training_{datetime.now().strftime('%Y%m%d-%H%M%S'
 CKP_LOGS = CKP_PATH/"logs"
 CKP_PATH_MODEL = CKP_PATH/"model.pth"
 CKP_PATH_HISTORY = CKP_PATH/"history.csv"
-CKP_PATH_CFG = CKP_PATH/"cfg.yaml"
+CKP_PATH_CFG = CKP_PATH/f"{Path(args.cfg_path).name}"
 
 if not CKP_PATH.is_dir():
     CKP_PATH.mkdir(parents=True)
