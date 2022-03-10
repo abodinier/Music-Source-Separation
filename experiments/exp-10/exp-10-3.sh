@@ -1,6 +1,6 @@
 #!/bin/sh
 
-#SBATCH --job-name=UQS37          # name of the job UQS37
+#SBATCH --job-name=l32s8          # name of the job UQS37
 #SBATCH --partition=gpu_p2      # request for allocation on the CPU partition
 #SBATCH --ntasks=1                  # number of tasks (a single process here)
 #SBATCH --cpus-per-task=2       # number of OpenMP threads
@@ -32,4 +32,4 @@ module load anaconda-py3
 
 conda activate pytorch
 
-CL_SOCKET_IFNAME=eno1 python train_kaituoxu.py --data_dir /gpfsdswork/dataset/MUSDB18/ --ckpdir weights --cfg_path cfg.yaml
+CL_SOCKET_IFNAME=eno1 python train_kaituoxu.py --data_dir /gpfsdswork/dataset/MUSDB18/ --ckpdir weights --cfg_path experiments/exp-10/cfg_l32s8.yaml

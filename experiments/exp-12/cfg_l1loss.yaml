@@ -16,7 +16,7 @@ P: 3
 L: 16
 N: 512
 stride: 8
-loss: "si_snr"
+loss: "l1_loss"
 store_gradient_norm: True
 verbose: 0
 gradient_clipping: 5

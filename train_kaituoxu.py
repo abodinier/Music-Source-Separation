@@ -1,6 +1,8 @@
+import time
 import yaml
 import torch
 import shutil
+import random
 import argparse
 import numpy as np
 import pandas as pd
@@ -12,7 +14,8 @@ from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 
 from kaituoxu.conv_tasnet import ConvTasNet
-from kaituoxu.pit_criterion import cal_loss
+from kaituoxu.pit_criterion import cal_loss as si_snr
+from torch.nn.functional import l1_loss, mse_loss
 
 from asteroid.data import MUSDB18Dataset
 from asteroid.losses import PITLossWrapper
@@ -27,7 +30,10 @@ parser.add_argument("--cfg_path", default="cfg.yaml", type=str)
 parser.add_argument("--data_dir", default="musdb_data", type=str)
 parser.add_argument("--ckpdir", default="weights", type=str)
 parser.add_argument("--restore", default=None, type=str)
+parser.add_argument("--description", default=None, type=str)
 args = parser.parse_args()
+
+time.sleep(1. + 5 * random.random())  # avoid problems creating multiple training dir simultaneously
 
 CKP_PATH = Path(args.ckpdir)/f"training_{datetime.now().strftime('%Y%m%d-%H%M%S')}" if args.restore is None else Path(args.restore)
 CKP_LOGS = CKP_PATH/"logs"
@@ -46,6 +52,10 @@ if not CKP_PATH_CFG.exists():
 
 with open(str(CKP_PATH_CFG), 'r') as file:
     CFG = yaml.load(file, Loader=yaml.FullLoader)
+
+if args.description is not None:
+    with open(str(CKP_PATH/"description"), "w") as desc:
+        desc.write(args.description)
 
 DATA_DIR = Path(args.data_dir)
 SEGMENT_SIZE = CFG["segment_size"]
@@ -66,6 +76,7 @@ LR = CFG["learning_rate"]
 N_EPOCHS = CFG["n_epochs"]
 TRAIN_BATCH_SIZE = CFG["train_batch_size"]
 TEST_BATCH_SIZE = CFG["test_batch_size"]
+NUM_WORKERS = CFG["num_workers"]
 
 X = CFG["X"]
 R = CFG["R"]
@@ -103,7 +114,7 @@ train_dataset = MUSDB18Dataset(
     sample_rate=SAMPLE_RATE,
     size=SIZE
 )
-train_loader = DataLoader(train_dataset, batch_size=TRAIN_BATCH_SIZE)
+train_loader = DataLoader(train_dataset, batch_size=TRAIN_BATCH_SIZE, num_workers=NUM_WORKERS)
 print(">>> Training Dataloader ready\n")
 
 test_dataset = MUSDB18Dataset(
@@ -119,7 +130,7 @@ test_dataset = MUSDB18Dataset(
     sample_rate=SAMPLE_RATE,
     size=SIZE
 )
-test_loader = DataLoader(test_dataset, batch_size=TEST_BATCH_SIZE)
+test_loader = DataLoader(test_dataset, batch_size=TEST_BATCH_SIZE, num_workers=NUM_WORKERS)
 print(">>> TEST Dataloader ready\n")
 
 
@@ -138,9 +149,9 @@ model = ConvTasNet(
     mask_nonlinear="softmax"
 )
 
-loss = cal_loss
+loss = LOSS
 optimizer = optim.Adam(model.parameters(), lr=LR)
-lr_updater = lr_scheduler.StepLR(optimizer, 20, 1e-2)
+lr_updater = lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, factor=0.1)
 history = None
 
 
@@ -154,7 +165,7 @@ if args.restore is not None:
 ################
 ### TRAINING ###
 ################
-def train(model, dataset, criterion, optimizer, mse, epoch, lr=None):
+def train(model, dataset, criterion, optimizer, mse, epoch):
     model.train()
     torch.set_grad_enabled(True)
     
@@ -184,7 +195,11 @@ def train(model, dataset, criterion, optimizer, mse, epoch, lr=None):
         
         output = model(x)
 
-        loss, max_snr, estimate_source, reorder_estimate_source = criterion(output, y, signal_length)
+        if CFG["loss"] == "si_snr":
+            loss, max_snr, estimate_source, reorder_estimate_source = criterion(output, y, signal_length)
+        if CFG["loss"] in ("l1_loss", "mse_loss"):
+            loss = criterion(output, y)
+            max_snr = torch.zeros(2)
         loss.backward()
         
         epoch_mse_loss += mse(output, y).item()
@@ -247,7 +262,11 @@ def test(model, dataset, criterion, mse):
             
             output = model(x)
 
-            loss, max_snr, estimate_source, reorder_estimate_source = criterion(output, y, signal_length)
+            if CFG["loss"] == "si_snr":
+                loss, max_snr, estimate_source, reorder_estimate_source = criterion(output, y, signal_length)
+            if CFG["loss"] in ("l1_loss", "mse_loss"):
+                loss = criterion(output, y)
+                max_snr = torch.zeros(2)
             
             mean_mse_loss += mse(output, y).item()
             mean_loss += loss.item()
@@ -308,15 +327,15 @@ def fit(model, train_set, test_set, criterion, optimizer, lr_updater, epochs, hi
         print("\n>>> Begin training from scratch\n")
     
     mse = PITLossWrapper(pairwise_mse, pit_from="pw_mtx")
-    lr = lr_updater.get_last_lr()[0]
     
     for epoch in range(start_epoch, start_epoch + epochs + 1):
         print(">>> EPOCH", epoch)
         
-        train_loss, train_mse_loss, train_snr = train(model, train_set, criterion, optimizer, mse, epoch, lr=lr)
-        lr_updater.step()
+        lr = optimizer.param_groups[0]['lr']
+        train_loss, train_mse_loss, train_snr = train(model, train_set, criterion, optimizer, mse, epoch)
         
         val_loss, val_mse_loss, val_snr = test(model, test_set, criterion, mse)
+        lr_updater.step(val_loss)
         
         train_loss_history.append(train_loss)
         train_mse_loss_history.append(train_mse_loss)
