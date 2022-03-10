@@ -151,7 +151,7 @@ model = ConvTasNet(
 
 loss = LOSS
 optimizer = optim.Adam(model.parameters(), lr=LR)
-lr_updater = lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, factor=0.1)
+lr_updater = lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, factor=0.5)
 history = None
 
 
