@@ -11,7 +11,7 @@ EPS = 1e-8
 
 
 class ConvTasNet(nn.Module):
-    def __init__(self, N, L, B, H, P, X, R, C, norm_type="gLN", causal=False,
+    def __init__(self, N, L, B, H, P, X, R, C, stride, norm_type="gLN", causal=False,
                  mask_nonlinear='relu'):
         """
         Args:
@@ -34,13 +34,13 @@ class ConvTasNet(nn.Module):
         self.causal = causal
         self.mask_nonlinear = mask_nonlinear
         # Components
-        self.encoder = Encoder(L, N)
+        self.encoder = Encoder(L, N, stride)
         self.separator = TemporalConvNet(N, B, H, P, X, R, C, norm_type, causal, mask_nonlinear)
-        self.decoder = Decoder(N, L)
+        self.decoder = Decoder(N, L, stride)
         # init
         for p in self.parameters():
             if p.dim() > 1:
-                nn.init.xavier_normal_(p)
+                nn.init.kaiming_uniform(p)
 
     def forward(self, mixture):
         """
@@ -97,13 +97,13 @@ class ConvTasNet(nn.Module):
 class Encoder(nn.Module):
     """Estimation of the nonnegative mixture weight by a 1-D conv layer.
     """
-    def __init__(self, L, N):
+    def __init__(self, L, N, stride):
         super(Encoder, self).__init__()
         # Hyper-parameter
-        self.L, self.N = L, N
+        self.L, self.N, self.stride = L, N, stride
         # Components
         # 50% overlap
-        self.conv1d_U = nn.Conv1d(1, N, kernel_size=L, stride=L // 2, bias=False)
+        self.conv1d_U = nn.Conv1d(1, N, kernel_size=L, stride=self.stride, bias=False)
 
     def forward(self, mixture):
         """

@@ -77,6 +77,10 @@ N_EPOCHS = CFG["n_epochs"]
 TRAIN_BATCH_SIZE = CFG["train_batch_size"]
 TEST_BATCH_SIZE = CFG["test_batch_size"]
 NUM_WORKERS = CFG["num_workers"]
+if CFG["device"] == "cuda" and torch.cuda.is_available():
+    DEVICE = torch.device("cuda")
+else:
+    DEVICE = torch.device("cpu")
 
 X = CFG["X"]
 R = CFG["R"]
@@ -92,6 +96,7 @@ CLIP = CFG["gradient_clipping"]
 print("\n>>> PARAMETERS")
 for key, value in CFG.items():
     print(f"\t>>> {key.upper()} -> {value}")
+print("\t>>> DEVICE = ", DEVICE)
 print("\n\n")
 
 if not CKP_PATH.exists():
@@ -146,8 +151,9 @@ model = ConvTasNet(
     P=P,
     L=L,
     N=N,
+    stride=STRIDE,
     mask_nonlinear="softmax"
-)
+).to(DEVICE)
 
 loss = LOSS
 optimizer = optim.Adam(model.parameters(), lr=LR)
@@ -178,6 +184,8 @@ def train(model, dataset, criterion, optimizer, mse, epoch):
         optimizer.zero_grad()
         
         x, y = train_batch
+        x = x.to(DEVICE)
+        y = y.to(DEVICE)
         
         if epoch == 1:
             for i in range(x.shape[0]):
@@ -191,7 +199,7 @@ def train(model, dataset, criterion, optimizer, mse, epoch):
     
         batch_size = x.shape[0]
         length = x.shape[-1]
-        signal_length = length * torch.ones(batch_size)
+        signal_length = length * torch.ones(batch_size).to(DEVICE)
         
         output = model(x)
 
@@ -256,6 +264,9 @@ def test(model, dataset, criterion, mse):
         
         for n_batch, test_batch in enumerate(dataset):
             x, y = test_batch
+            x = x.to(DEVICE)
+            y = y.to(DEVICE)
+            
             batch_size = x.shape[0]
             length = x.shape[-1]
             signal_length = length * torch.ones(batch_size)
