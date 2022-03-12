@@ -192,10 +192,10 @@ def train(model, dataset, criterion, optimizer, mse, epoch):
                 path = CKP_PATH/f"epoch_{epoch}_track_{i}"
                 if not path.is_dir():
                     path.mkdir()
-                wavfile.write(path/"mixture.wav", SAMPLE_RATE, x[i].detach().numpy())
+                wavfile.write(path/"mixture.wav", SAMPLE_RATE, x[i].cpu().detach().numpy())
                 for j, s in enumerate(y[i]):
                     name = path/f"{j}.wav"
-                    wavfile.write(str(name), SAMPLE_RATE, s.detach().numpy())
+                    wavfile.write(str(name), SAMPLE_RATE, s.cpu().detach().numpy())
     
         batch_size = x.shape[0]
         length = x.shape[-1]
@@ -222,9 +222,9 @@ def train(model, dataset, criterion, optimizer, mse, epoch):
                 for layer in model.modules():
                     try:
                         name = layer.__str__()
-                        min_grad = np.min(np.abs(layer.weight.grad.detach().numpy()))
-                        mean_grad = np.mean(np.abs(layer.weight.grad.detach().numpy()))
-                        max_grad = np.max(np.abs(layer.weight.grad.detach().numpy()))
+                        min_grad = np.min(np.abs(layer.weight.grad.cpu().detach().numpy()))
+                        mean_grad = np.mean(np.abs(layer.weight.grad.cpu().detach().numpy()))
+                        max_grad = np.max(np.abs(layer.weight.grad.cpu().detach().numpy()))
                         info = f">>> NAME : {name} | LOSS = {loss.item()} | min grad = {min_grad} | max grad = {max_grad} | mean grad = {mean_grad}\n"
                         if VERBOSE == 1:
                             print(info)
