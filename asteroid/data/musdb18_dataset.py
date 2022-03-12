@@ -112,7 +112,7 @@ class MUSDB18Dataset(torch.utils.data.Dataset):
         samples_per_track=1,
         random_segments=False,
         random_track_mix=False,
-        source_augmentations=lambda audio: audio,
+        source_augmentations=None,
         sample_rate=44100,
         mono=True,
         stem_structure_dict=None,
@@ -198,7 +198,8 @@ class MUSDB18Dataset(torch.utils.data.Dataset):
             # convert to torch tensor
             audio = torch.tensor(audio.T, dtype=torch.float)
             # apply source-wise augmentations
-            audio = self.source_augmentations(audio)
+            if self.source_augmentations is not None:
+                audio = self.source_augmentations(audio)
             audio_sources[source] = audio
 
         # apply linear mix over source index=0
