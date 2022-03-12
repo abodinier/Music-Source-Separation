@@ -191,15 +191,7 @@ def train(model, dataset, criterion, optimizer, mse, epoch):
         x = x.to(DEVICE)
         y = y.to(DEVICE)
         
-        if epoch == 1:
-            for i in range(x.shape[0]):
-                path = CKP_PATH/f"epoch_{epoch}_track_{i}"
-                if not path.is_dir():
-                    path.mkdir()
-                wavfile.write(path/"mixture.wav", SAMPLE_RATE, x[i].cpu().detach().numpy())
-                for j, s in enumerate(y[i]):
-                    name = path/f"{j}.wav"
-                    wavfile.write(str(name), SAMPLE_RATE, s.cpu().detach().numpy())
+        save_data_example(x, y, epoch)
     
         batch_size = x.shape[0]
         length = x.shape[-1]
@@ -223,33 +215,13 @@ def train(model, dataset, criterion, optimizer, mse, epoch):
 
         
         if STORE_GRADIENT_NORM:
-            with open(CKP_LOGS/f"train_epoch{epoch}.log", "a") as log:
-                for layer in model.modules():
-                    try:
-                        name = layer.__str__()
-                        min_grad = np.min(np.abs(layer.weight.grad.cpu().detach().numpy()))
-                        mean_grad = np.mean(np.abs(layer.weight.grad.cpu().detach().numpy()))
-                        max_grad = np.max(np.abs(layer.weight.grad.cpu().detach().numpy()))
-                        info = f">>> NAME : {name} | LOSS = {loss.item()} | min grad = {min_grad} | max grad = {max_grad} | mean grad = {mean_grad}\n"
-                        if VERBOSE == 1:
-                            print(info)
-                        log.write(info)
-                    except:
-                        pass
+            save_gradient_norms(model, loss, epoch)
         
         torch.nn.utils.clip_grad_norm_(model.parameters(), CLIP)
         optimizer.step()
         
         if SAVE_WEIGHTS_EACH_EPOCH:
-            torch.save(
-                {
-                    'epoch': epoch,
-                    'loss': loss,
-                    'model_state_dict': model.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict(),
-                },
-                CKP_PATH/f"model_{epoch}.pth"
-            )
+            save_ckp(model, optimizer, loss, epoch)
         
     epoch_loss /= data_counter
     epoch_mse_loss /= data_counter
@@ -298,20 +270,6 @@ def test(model, dataset, criterion, mse):
         mean_snr /= data_counter
     
     return mean_loss, mean_mse_loss, mean_snr
-
-
-def checkpoint(model, epoch, optimizer, lr_scheduler, best_loss, loss, ckp_dir, delta=1e-3):
-    if loss <= best_loss + delta:
-        torch.save(
-            {
-                'epoch': epoch,
-                'loss': loss,
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'lr_scheduler': lr_scheduler.state_dict()
-            },
-            ckp_dir
-        )
 
 
 def fit(model, train_set, test_set, criterion, optimizer, lr_updater, epochs, history=None):
@@ -396,6 +354,76 @@ def fit(model, train_set, test_set, criterion, optimizer, lr_updater, epochs, hi
         history.index.name = "epoch"
         history.to_csv(CKP_PATH_HISTORY)
 
+def forward(model, x, y, signal_length, criterion, device):
+    if device == "cuda":
+        with torch.cuda.amp.autocast(dtype=torch.bfloat16, enabled=CFG["device"] == "cuda"):
+            output = model(x)
+
+            if CFG["loss"] == "si_snr":
+                loss, max_snr, estimate_source, reorder_estimate_source = criterion(output, y, signal_length)
+            if CFG["loss"] in ("l1_loss", "mse_loss"):
+                loss = criterion(output, y)
+                max_snr = torch.zeros(2)
+    else:
+        output = model(x)
+
+        if CFG["loss"] == "si_snr":
+            loss, max_snr, estimate_source, reorder_estimate_source = criterion(output, y, signal_length)
+        if CFG["loss"] in ("l1_loss", "mse_loss"):
+            loss = criterion(output, y)
+            max_snr = torch.zeros(2)
+    
+    return output, loss, max_snr
+
+def checkpoint(model, epoch, optimizer, lr_scheduler, best_loss, loss, ckp_dir, delta=1e-3):
+    if loss <= best_loss + delta:
+        torch.save(
+            {
+                'epoch': epoch,
+                'loss': loss,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'lr_scheduler': lr_scheduler.state_dict()
+            },
+            ckp_dir
+        )
+
+def save_data_example(x, y, epoch):
+    if epoch == 1:
+        for i in range(x.shape[0]):
+            path = CKP_PATH/f"epoch_{epoch}_track_{i}"
+            if not path.is_dir():
+                path.mkdir()
+            wavfile.write(path/"mixture.wav", SAMPLE_RATE, x[i].cpu().detach().numpy())
+            for j, s in enumerate(y[i]):
+                name = path/f"{j}.wav"
+                wavfile.write(str(name), SAMPLE_RATE, s.cpu().detach().numpy())
+
+def save_gradient_norms(model, loss, epoch):
+    with open(CKP_LOGS/f"train_epoch{epoch}.log", "a") as log:
+        for layer in model.modules():
+            try:
+                name = layer.__str__()
+                min_grad = np.min(np.abs(layer.weight.grad.cpu().detach().numpy()))
+                mean_grad = np.mean(np.abs(layer.weight.grad.cpu().detach().numpy()))
+                max_grad = np.max(np.abs(layer.weight.grad.cpu().detach().numpy()))
+                info = f">>> NAME : {name} | LOSS = {loss.item()} | min grad = {min_grad} | max grad = {max_grad} | mean grad = {mean_grad}\n"
+                if VERBOSE == 1:
+                    print(info)
+                log.write(info)
+            except Exception as e:
+                pass
+
+def save_ckp(model, optimizer, loss, epoch):
+    torch.save(
+        {
+            'epoch': epoch,
+            'loss': loss,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+        },
+        CKP_PATH/f"model_{epoch}.pth"
+    )
 
 ################
 ### Train ######
