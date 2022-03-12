@@ -36,11 +36,11 @@ class ConvTasNet(nn.Module):
         # Components
         self.encoder = Encoder(L, N, stride)
         self.separator = TemporalConvNet(N, B, H, P, X, R, C, norm_type, causal, mask_nonlinear)
-        self.decoder = Decoder(N, L, stride)
+        self.decoder = Decoder(N, L)
         # init
         for p in self.parameters():
             if p.dim() > 1:
-                nn.init.kaiming_uniform(p)
+                nn.init.kaiming_uniform_(p)
 
     def forward(self, mixture):
         """
