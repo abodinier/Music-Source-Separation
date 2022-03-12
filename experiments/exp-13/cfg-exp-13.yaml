@@ -2,9 +2,9 @@ sample_rate: 22050
 size: -1
 learning_rate: 0.001
 n_epochs: 100
-train_batch_size: 4
-test_batch_size: 64
-segment_size: 8
+train_batch_size: 2
+test_batch_size: 2
+segment_size: 4
 random_track_mix: False
 targets: ["drums", "bass", "other", "vocals"]
 X: 10

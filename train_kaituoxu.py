@@ -201,14 +201,15 @@ def train(model, dataset, criterion, optimizer, mse, epoch):
         length = x.shape[-1]
         signal_length = length * torch.ones(batch_size).to(DEVICE)
         
-        output = model(x)
+        with torch.cuda.amp.autocast(dtype=torch.bfloat16):
+            output = model(x)
 
-        if CFG["loss"] == "si_snr":
-            loss, max_snr, estimate_source, reorder_estimate_source = criterion(output, y, signal_length)
-        if CFG["loss"] in ("l1_loss", "mse_loss"):
-            loss = criterion(output, y)
-            max_snr = torch.zeros(2)
-        loss.backward()
+            if CFG["loss"] == "si_snr":
+                loss, max_snr, estimate_source, reorder_estimate_source = criterion(output, y, signal_length)
+            if CFG["loss"] in ("l1_loss", "mse_loss"):
+                loss = criterion(output, y)
+                max_snr = torch.zeros(2)
+            loss.backward()
         
         epoch_mse_loss += mse(output, y).item()
         epoch_loss += loss.item()
@@ -271,13 +272,14 @@ def test(model, dataset, criterion, mse):
             length = x.shape[-1]
             signal_length = length * torch.ones(batch_size)
             
-            output = model(x)
+            with torch.cuda.amp.autocast(dtype=torch.bfloat16):
+                output = model(x)
 
-            if CFG["loss"] == "si_snr":
-                loss, max_snr, estimate_source, reorder_estimate_source = criterion(output, y, signal_length)
-            if CFG["loss"] in ("l1_loss", "mse_loss"):
-                loss = criterion(output, y)
-                max_snr = torch.zeros(2)
+                if CFG["loss"] == "si_snr":
+                    loss, max_snr, estimate_source, reorder_estimate_source = criterion(output, y, signal_length)
+                if CFG["loss"] in ("l1_loss", "mse_loss"):
+                    loss = criterion(output, y)
+                    max_snr = torch.zeros(2)
             
             mean_mse_loss += mse(output, y).item()
             mean_loss += loss.item()
