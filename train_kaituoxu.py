@@ -33,16 +33,20 @@ parser.add_argument("--restore", default=None, type=str)
 parser.add_argument("--description", default=None, type=str)
 args = parser.parse_args()
 
-time.sleep(1. + 20 * random.random())  # avoid problems creating multiple training dir simultaneously
+if args.restore is not None:
+    CKP_PATH = Path(args.restore)
+else:
+    CKP_PATH = Path(args.ckpdir)/f"training_{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    while CKP_PATH.is_dir(): # avoid problems creating multiple training dir simultaneously
+        time.sleep(1. + 10 * random.random())
+        CKP_PATH = Path(args.ckpdir)/f"training_{datetime.now().strftime('%Y%m%d-%H%M%S')}"
 
-CKP_PATH = Path(args.ckpdir)/f"training_{datetime.now().strftime('%Y%m%d-%H%M%S')}" if args.restore is None else Path(args.restore)
+CKP_PATH.mkdir(parents=True)
+
 CKP_LOGS = CKP_PATH/"logs"
 CKP_PATH_MODEL = CKP_PATH/"model.pth"
 CKP_PATH_HISTORY = CKP_PATH/"history.csv"
 CKP_PATH_CFG = CKP_PATH/f"{Path(args.cfg_path).name}"
-
-if not CKP_PATH.is_dir():
-    CKP_PATH.mkdir(parents=True)
 
 if not CKP_LOGS.is_dir():
     CKP_LOGS.mkdir(parents=True)
