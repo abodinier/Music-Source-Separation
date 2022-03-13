@@ -101,6 +101,7 @@ print("\n>>> PARAMETERS")
 for key, value in CFG.items():
     print(f"\t>>> {key.upper()} -> {value}")
 print("\t>>> DEVICE = ", DEVICE)
+print("\t>>> CKP name = ", CKP_PATH.name)
 print("\n\n")
 
 if not CKP_PATH.exists():
@@ -198,7 +199,7 @@ def train(model, dataset, criterion, optimizer, mse, epoch):
         length = x.shape[-1]
         signal_length = length * torch.ones(batch_size).to(DEVICE)
         
-        output, loss, max_snr = forward(model, x, y, signal_length, criterion, DEVICE)
+        output, loss, max_snr = forward(model, x, y, signal_length, criterion)
         loss.backward()
         
         epoch_mse_loss += mse(output, y).item()
@@ -242,7 +243,7 @@ def test(model, dataset, criterion, mse):
             length = x.shape[-1]
             signal_length = length * torch.ones(batch_size)
             
-            output, loss, max_snr = forward(model, x, y, signal_length, criterion, DEVICE)
+            output, loss, max_snr = forward(model, x, y, signal_length, criterion)
             
             mean_mse_loss += mse(output, y).item()
             mean_loss += loss.item()
@@ -341,7 +342,7 @@ def fit(model, train_set, test_set, criterion, optimizer, lr_updater, epochs, hi
         history.index.name = "epoch"
         history.to_csv(CKP_PATH_HISTORY)
 
-def forward(model, x, y, signal_length, criterion, device):
+def forward(model, x, y, signal_length, criterion):
     if CFG["device"] == "cuda":
         with torch.cuda.amp.autocast(dtype=torch.float16):
             output = model(x)
