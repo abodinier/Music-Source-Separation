@@ -36,10 +36,11 @@ args = parser.parse_args()
 if args.restore is not None:
     CKP_PATH = Path(args.restore)
 else:
-    CKP_PATH = Path(args.ckpdir)/f"training_{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    time.sleep(1. + 20 * random.random())
+    CKP_PATH = Path(args.ckpdir)/f"training_{datetime.now().strftime('%Y%m%d-%H%M%S.%f')[:-3]}"
     while CKP_PATH.is_dir(): # avoid problems creating multiple training dir simultaneously
         time.sleep(1. + 10 * random.random())
-        CKP_PATH = Path(args.ckpdir)/f"training_{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+        CKP_PATH = Path(args.ckpdir)/f"training_{datetime.now().strftime('%Y%m%d-%H%M%S.%f')[:-3]}"
 
 CKP_PATH.mkdir(parents=True)
 
