@@ -5,9 +5,29 @@ from itertools import permutations
 
 import torch
 import torch.nn.functional as F
+from torch.nn.functional import l1_loss, mse_loss
 
 EPS = 1e-8
 
+class PitLoss:
+    def __init__(self, criterion="si_snr"):
+        self.criterion = criterion
+    
+    def __call__(self, source, estimate_source, source_lengths):
+        max_snr, perms, max_snr_idx = cal_si_snr_with_pit(source,
+                                                      estimate_source,
+                                                      source_lengths)
+        if self.criterion == "si_snr":
+            loss = 0 - torch.mean(max_snr)
+            reorder_estimate_source = reorder_source(estimate_source, perms, max_snr_idx)
+        if self.criterion == "l1_loss":
+            reorder_estimate_source = reorder_source(estimate_source, perms, max_snr_idx)
+            loss = l1_loss(source, reorder_estimate_source)
+        if self.criterion == "mse_loss":
+            reorder_estimate_source = reorder_source(estimate_source, perms, max_snr_idx)
+            loss = mse_loss(source, reorder_estimate_source)
+    
+        return loss, max_snr, estimate_source, reorder_estimate_source
 
 def cal_loss(source, estimate_source, source_lengths):
     """
