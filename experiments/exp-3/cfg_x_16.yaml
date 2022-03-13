@@ -22,4 +22,4 @@ verbose: 0
 gradient_clipping: 5
 save_weights_each_epoch: False
 num_workers: 2
-device: "cuda"
+device: "cpu"
