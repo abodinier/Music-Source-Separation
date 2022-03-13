@@ -35,7 +35,7 @@ class ConvTasNet(nn.Module):
         # Components
         self.encoder = Encoder(L, N, stride)
         self.separator = TemporalConvNet(N, B, H, P, X, R, C, norm_type, causal, mask_nonlinear)
-        self.decoder = Decoder(N, L)
+        self.decoder = Decoder(N, L, device=device)
         self.device = device
         # init
         for p in self.parameters():
@@ -118,12 +118,13 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, N, L):
+    def __init__(self, N, L, device="cpu"):
         super(Decoder, self).__init__()
         # Hyper-parameter
         self.N, self.L = N, L
         # Components
         self.basis_signals = nn.Linear(N, L, bias=False)
+        self.device = device
 
     def forward(self, mixture_w, est_mask):
         """
