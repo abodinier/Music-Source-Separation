@@ -6,7 +6,7 @@ import math
 import torch
 
 
-def overlap_and_add(signal, frame_step):
+def overlap_and_add(signal, frame_step, device="cpu"):
     """Reconstructs a signal from a framed representation.
 
     Adds potentially overlapping frames of a signal with shape
@@ -34,9 +34,9 @@ def overlap_and_add(signal, frame_step):
     output_size = frame_step * (frames - 1) + frame_length
     output_subframes = output_size // subframe_length
 
-    subframe_signal = signal.view(*outer_dimensions, -1, subframe_length)
+    subframe_signal = signal.view(*outer_dimensions, -1, subframe_length).to(device)
 
-    frame = torch.arange(0, output_subframes).unfold(0, subframes_per_frame, subframe_step)
+    frame = torch.arange(0, output_subframes).unfold(0, subframes_per_frame, subframe_step).to(device)
     frame = signal.new_tensor(frame).long()  # signal may in GPU or CPU
     frame = frame.contiguous().view(-1)
 

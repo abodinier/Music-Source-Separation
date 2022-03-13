@@ -11,8 +11,7 @@ EPS = 1e-8
 
 
 class ConvTasNet(nn.Module):
-    def __init__(self, N, L, B, H, P, X, R, C, stride, norm_type="gLN", causal=False,
-                 mask_nonlinear='relu'):
+    def __init__(self, N, L, B, H, P, X, R, C, stride, norm_type="gLN", causal=False, mask_nonlinear='relu', device="cpu"):
         """
         Args:
             N: Number of filters in autoencoder
@@ -37,6 +36,7 @@ class ConvTasNet(nn.Module):
         self.encoder = Encoder(L, N, stride)
         self.separator = TemporalConvNet(N, B, H, P, X, R, C, norm_type, causal, mask_nonlinear)
         self.decoder = Decoder(N, L)
+        self.device = device
         # init
         for p in self.parameters():
             if p.dim() > 1:
@@ -138,7 +138,7 @@ class Decoder(nn.Module):
         source_w = torch.transpose(source_w, 2, 3) # [M, C, K, N]
         # S = DV
         est_source = self.basis_signals(source_w)  # [M, C, K, L]
-        est_source = overlap_and_add(est_source, self.L//2) # M x C x T
+        est_source = overlap_and_add(est_source, self.L//2, device=self.device) # M x C x T
         return est_source
 
 

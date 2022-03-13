@@ -157,7 +157,8 @@ model = ConvTasNet(
     L=L,
     N=N,
     stride=STRIDE,
-    mask_nonlinear="softmax"
+    mask_nonlinear="softmax",
+    device=DEVICE
 ).to(DEVICE)
 
 loss = LOSS
