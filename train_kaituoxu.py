@@ -14,8 +14,7 @@ from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 
 from kaituoxu.conv_tasnet import ConvTasNet
-from kaituoxu.pit_criterion import cal_loss as si_snr
-from torch.nn.functional import l1_loss, mse_loss
+from kaituoxu.pit_criterion import PitLoss
 
 from asteroid.data import MUSDB18Dataset
 from asteroid.losses import PITLossWrapper
@@ -67,7 +66,7 @@ SEGMENT_SIZE = CFG["segment_size"]
 RANDOM_TRACK_MIX = CFG["random_track_mix"]
 TARGETS = CFG["targets"]
 N_SRC = len(TARGETS)
-LOSS = eval(CFG["loss"])
+LOSS = CFG["loss"]
 STORE_GRADIENT_NORM = CFG["store_gradient_norm"]
 VERBOSE = CFG["verbose"]
 SAVE_WEIGHTS_EACH_EPOCH = CFG["save_weights_each_epoch"]
@@ -161,7 +160,7 @@ model = ConvTasNet(
     device=DEVICE
 ).to(DEVICE)
 
-loss = LOSS
+loss = PitLoss(criterion=LOSS)
 optimizer = optim.Adam(model.parameters(), lr=LR)
 lr_updater = lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, factor=0.5)
 history = None
@@ -347,19 +346,11 @@ def forward(model, x, y, signal_length, criterion, device):
         with torch.cuda.amp.autocast(dtype=torch.float16):
             output = model(x)
 
-            if CFG["loss"] == "si_snr":
-                loss, max_snr, estimate_source, reorder_estimate_source = criterion(output, y, signal_length)
-            if CFG["loss"] in ("l1_loss", "mse_loss"):
-                loss = criterion(output, y)
-                max_snr = torch.zeros(2)
+            loss, max_snr, estimate_source, reorder_estimate_source = criterion(y, output, signal_length)
     else:
         output = model(x)
 
-        if CFG["loss"] == "si_snr":
-            loss, max_snr, estimate_source, reorder_estimate_source = criterion(output, y, signal_length)
-        if CFG["loss"] in ("l1_loss", "mse_loss"):
-            loss = criterion(output, y)
-            max_snr = torch.zeros(2)
+        loss, max_snr, estimate_source, reorder_estimate_source = criterion(y, output, signal_length)
     
     return output, loss, max_snr
 
