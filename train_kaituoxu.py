@@ -341,8 +341,8 @@ def fit(model, train_set, test_set, criterion, optimizer, lr_updater, epochs, hi
         history.to_csv(CKP_PATH_HISTORY)
 
 def forward(model, x, y, signal_length, criterion, device):
-    if device == "cuda":
-        with torch.cuda.amp.autocast(dtype=torch.bfloat16, enabled=CFG["device"] == "cuda"):
+    if CFG["device"] == "cuda":
+        with torch.cuda.amp.autocast(dtype=torch.bfloat16):
             output = model(x)
 
             if CFG["loss"] == "si_snr":
