@@ -116,7 +116,8 @@ class MUSDB18Dataset(torch.utils.data.Dataset):
         sample_rate=44100,
         mono=True,
         stem_structure_dict=None,
-        size=None
+        size=None,
+        seed=0
     ):
 
         self.root = Path(root).expanduser()
@@ -146,6 +147,8 @@ class MUSDB18Dataset(torch.utils.data.Dataset):
                 3: "other",
                 4: "vocals"
             }
+        self.seed = seed
+        random.seed(self.seed)
 
     def __getitem__(self, index):
         # assemble the mixture of target and interferers
@@ -156,7 +159,7 @@ class MUSDB18Dataset(torch.utils.data.Dataset):
         if self.random_segments:
             start = random.uniform(0, self.tracks[track_id]["min_duration"] - self.segment)
         else:
-            start = 0
+            start = (index % self.samples_per_track) * self.segment
 
         # load sources
         for idx, source in self.stem_structure_dict.items():
