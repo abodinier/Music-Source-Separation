@@ -376,7 +376,7 @@ def save_data_example(x, y, epoch):
                 path.mkdir()
             wavfile.write(path/"mixture.wav", SAMPLE_RATE, x[i].cpu().detach().numpy())
             for j, s in enumerate(y[i]):
-                name = path/f"{j}.wav"
+                name = path/f"{TARGETS[j]}.wav"
                 wavfile.write(str(name), SAMPLE_RATE, s.cpu().detach().numpy())
 
 def save_gradient_norms(model, loss, epoch):
