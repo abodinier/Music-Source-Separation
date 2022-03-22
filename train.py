@@ -238,10 +238,10 @@ def test(model, dataset, criterion):
                 y = y.to(DEVICE, dtype=torch.float16)
                 with torch.cuda.amp.autocast():
                     output = model(x)
-                    loss = criterion(output, y).sum(axis=(0, 1))
+                    loss = criterion(output, y, reduction='none').sum(axis=(0, 1, 2))
             else:
                 output = model(x)
-                loss = criterion(output, y).sum(axis=(0, 1))
+                loss = criterion(output, y, reduction='none').sum(axis=(0, 1, 2))
             
             mean_loss += loss.item()
             data_counter += batch_size
