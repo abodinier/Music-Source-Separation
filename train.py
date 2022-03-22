@@ -258,7 +258,7 @@ def fit(model, train_set, test_set, criterion, optimizer, lr_updater, epochs, hi
         
         train_loss_history = list(history["train_loss"].values)
         val_loss_history = list(history["val_loss"].values)
-        lr_history = list(history["lr_history"].values)
+        lr_history = list(history["lr"].values)
         
         start_epoch = len(train_loss_history)
         print(f"\n>>> Restore training from EPOCH {start_epoch}\n")
