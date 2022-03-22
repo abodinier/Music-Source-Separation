@@ -32,4 +32,4 @@ module load anaconda-py3
 
 conda activate pytorch
 
-CL_SOCKET_IFNAME=eno1 python train_new.py --data_dir /gpfsdswork/dataset/MUSDB18/ --ckpdir weights --cfg_path experiments/exp-14/cfg-l1.yaml
+CL_SOCKET_IFNAME=eno1 python train.py --data_dir /gpfsdswork/dataset/MUSDB18/ --ckpdir weights --cfg_path experiments/exp-14/cfg-l1.yaml
