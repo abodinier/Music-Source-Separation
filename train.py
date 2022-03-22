@@ -39,7 +39,8 @@ else:
         time.sleep(1. + 10 * random.random())
         CKP_PATH = Path(args.ckpdir)/f"training_{datetime.now().strftime('%Y%m%d-%H%M%S.%f')[:-3]}"
 
-CKP_PATH.mkdir(parents=True)
+if not CKP_PATH.is_dir():
+    CKP_PATH.mkdir(parents=True)
 
 CKP_LOGS = CKP_PATH/"logs"
 CKP_PATH_MODEL = CKP_PATH/"model.pth"
