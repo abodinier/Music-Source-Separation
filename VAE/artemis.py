@@ -13,7 +13,22 @@ import matplotlib.pyplot as plt
 
 
 def train(epoch, model, train_loader, device, dimx, optimizer, loss_function,beta):
+	"""
+	Train the Vae model
 
+	Args:
+		epoch (int): Number of epochs
+		model : VAE model
+		train_loader (Dataloader): Dataloader made from the MusicDataset class.
+		device (str): cpu or cuda
+		dimx (int): size of the input STFT (i.e. 256*128 most of the time)
+		optimizer (optim): optimizer
+		loss_function (Loss): loss function
+		beta (int): beta for the loss function 
+
+	Returns:
+		array: contains the train loss
+	"""
 	model.train()
 	train_losses = torch.zeros(3)
 
@@ -44,8 +59,20 @@ def train(epoch, model, train_loader, device, dimx, optimizer, loss_function,bet
 	return train_losses
 
 
-def test(epoch, model, test_loader, device, dimx, optimizer, loss_function,beta):
+def test(model, test_loader, device, dimx, loss_function,beta):
+	"""Test the VAE model
 
+	Args:
+		model : VAE model
+		test_loader (DataLoader): DataLoader from the MusicDataset class
+		device (str): cpu or cuda
+		dimx (int): input size of the STFT (i.e. 256*128 most of the time)
+		loss_function (Loss): loss functino
+		beta (int): beta for the loss function
+
+	Returns:
+		array: returns test loss
+	"""
 	model.eval()
 	test_losses = torch.zeros(3)
 
@@ -64,6 +91,11 @@ def test(epoch, model, test_loader, device, dimx, optimizer, loss_function,beta)
 	return test_losses
 
 def plot_losses(losses):
+	"""Use matplotlib to plot the train and test loss
+
+	Args:
+		losses (array): Contains the loss
+	"""
 	plt.figure()
 	plt.plot(np.array(range(1,len(losses["train"][:,0]))),losses["train"][:,0].view(-1),label="Train")
 	plt.plot(np.array(range(1,len(losses["train"][:,0]))),losses["test"][:,0].view(-1),label="Test")
@@ -74,8 +106,22 @@ def plot_losses(losses):
 
 
 
-def launch_model(batch_size = 4,n_freq=256, timeframe=128, dimz=20,n_sources=4, lr=.0002, n_epochs=5,save=False, plot=False):
-		
+def launch_model(batch_size = 4,n_freq=256, timeframe=128, dimz=20,n_sources=4, lr=.0002, n_epochs=5,save=False, plot=False, load=False):
+	"""
+	Load the files, creates the dataloader, initialize the VAE model, train and test it.
+
+	Args:
+		batch_size (int, optional): Size of the batch. Defaults to 4.
+		n_freq (int, optional): Number of frequency to keep in the STFT. Defaults to 256.
+		timeframe (int, optional): Size of the window of STFT to keep. Defaults to 128.
+		dimz (int, optional): latent space dimension . Defaults to 20.
+		n_sources (int, optional): Number of source to separate. Defaults to 4.
+		lr (float, optional): learning rate. Defaults to .0002.
+		n_epochs (int, optional): Number of epochs to train. Defaults to 5.
+		save (bool, optional): To save the model at the end of the training. Defaults to False.
+		plot (bool, optional): To plot the train and test loss. Defaults to False.
+		load (bool, optional): To load a pretrained model. Defaults to False.
+	"""
 	print("Initialization of the Variational autoencoder")
 	labels=['drums', 'bass', 'other', 'vocals']
 	print("Starting to build the dataset.")
@@ -119,7 +165,7 @@ def launch_model(batch_size = 4,n_freq=256, timeframe=128, dimz=20,n_sources=4, 
 		beta = min(1.0,(epoch)/min(5000,50)) * 0.5
 
 		losses["train"][epoch-1] = train(epoch, model, train_loader, device, dimx, optimizer, loss_function,beta)
-		losses["test"][epoch-1] = test(epoch, model, test_loader, device, dimx, optimizer, loss_function,beta)
+		losses["test"][epoch-1] = test(model, test_loader, device, dimx, loss_function,beta)
 
 		if optimizer.param_groups[0]['lr'] >= 1.0e-5:
 			scheduler.step()

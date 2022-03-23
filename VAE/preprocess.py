@@ -8,18 +8,45 @@ import numpy as np
 
 
 def stereo_to_mono(audio):
+    """transform a stereo signal to a mono signal
 
-  return (audio[:,0]+audio[:,1])/2
+    Args:
+        audio (array): audio array
+
+    Returns:
+        array: array in 1D
+    """
+    return (audio[:,0]+audio[:,1])/2
 
 
 def stft(audio_data,n_freq=256, frame=128):
+    """
+    Compute the short time fourier transform of a signal
+    Please note that audio_data needs to be a torch.Tensor
+    Args:
+        audio_data (torch.Tensor): _description_
+        n_freq (int, optional): Number of frequency to keep. Defaults to 256.
+        frame (int, optional): Number of frame to keep. Defaults to 128.
 
+    Returns:
+        tuple: returns the magnitude and the phase of the stft
+    """
     stft_complex = torch.stft(audio_data, 2048, hop_length=512, win_length=512, window=torch.hann_window(512), center=True, pad_mode='reflect', normalized=True, onesided=None, return_complex=True)[:n_freq,...]
     mag, phase = stft_complex.abs(), stft_complex.angle()       
        
     return mag, phase
 
 def slicing(slices_info, nb_frame, file_id):
+    """Decompose a file into index to have audio of the same shape overlapping
+
+    Args:
+        slices_info (list): list
+        nb_frame (int): number of frame in a slice
+        file_id (int): index of the file
+
+    Returns:
+        list: list of index of the start of each slice
+    """
     size_frame=128       
     n_max = 100
     mid = size_frame//2

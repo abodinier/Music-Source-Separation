@@ -6,15 +6,17 @@ from torch import optim
 from preprocess import *
 
 class SRNet(nn.Module):
-    def __init__(self):
+    def __init__(self, n_freq=512, timeframe=128):
+        """Super Resolution model for Audio enhancement
+
+        Args:
+            n_freq (int, optional): Number of frequency in the output spectogram. Defaults to 512.
+            timeframe (int, optional): Size of the window. Defaults to 128.
+        """
         super().__init__()
-        self.up = nn.UpsamplingBilinear2d(size=(512,128))
+        self.up = nn.UpsamplingBilinear2d(size=(n_freq,timeframe))
         self.conv1 = nn.Conv2d(2, 6, 5,padding='same')
-        # self.pool = nn.MaxPool2d(2, 2)
         self.conv2 = nn.Conv2d(6, 16, 3,padding='same')
-        # self.fc1 = nn.Linear(16 * 5 * 5, 120)
-        # self.fc2 = nn.Linear(120, 84)
-        # self.fc3 = nn.Linear(84, 10)
         self.conv3 = nn.Conv2d(16, 2, 3,padding='same')
 
     def forward(self, x):
@@ -25,36 +27,48 @@ class SRNet(nn.Module):
         return x
 
 
-def train(model, train_loader,optimizer, criterion):
-    print("Start training.")
-    for epoch in range(50):  # loop over the dataset multiple times
+def train(model, train_loader,optimizer, criterion, n_epochs):
+    """Train a model on the train_loader, with the optimizer and the criterion, for n_epochs
 
+    Args:
+        model : SRNet model
+        train_loader (Dataloader): Dataloader of [X,y] where X correspond to the stft with half the frequency of y
+        optimizer (optim): optimizer
+        criterion (Loss): Loss used to train
+        n_epochs (int): Number of epochs to train
+
+    Returns:
+        loss: list of the loss, used to plot the train loss
+    """
+    print("Start training.")
+    for epoch in range(n_epochs): 
         loss_tot = 0.0
         for batch_idx, data in enumerate(train_loader, 0):
-            # get the inputs; data is a list of [inputs, labels]
             inputs, labels = data
-            # zero the parameter gradients
             optimizer.zero_grad()
 
-            # forward + backward + optimize
             outputs = model(inputs)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
-
-            # print statistics
             running_loss += loss.item()
-            # if i % 2000 == 1999:    # print every 2000 mini-batches
-        #   print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 2000:.3f}')
-        print('Train Epoch: {} [{}/{} ({:.0f}%)] \t -ELL: {:5.6f} \t KLD: {:5.6f} \t Loss: {:5.6f}'.format(
+        print('Train Epoch: {} [{}/{} ({:.0f}%)] \t Loss: {:5.6f}'.format(
 				epoch, batch_idx * len(data), len(train_loader.dataset),
 				100. * batch_idx / len(train_loader),
 				loss.item() / len(data)))
-        loss_tot = 0.0
 
     print('Training finished')
+    return loss_tot
 
-def launch_model(batch_size=4, save=False):
+def launch_model(batch_size=4, save=False, n_epochs=50):
+    """
+    Launch this model from the main file
+
+    Args:
+        batch_size (int, optional):  Defaults to 4.
+        save (bool, optional):  Defaults to False.
+        n_epochs (int, optional):  Defaults to 50.
+    """
     try:
         filelist_train = []
         for filename in os.listdir("./musdb/train"):
@@ -95,6 +109,11 @@ def launch_model(batch_size=4, save=False):
 
     criterion = nn.MSELoss()
     optimizer = optim.SGD(srnet.parameters(), lr=0.0001, momentum=0.9)
-    train(srnet, train_loader,optimizer, criterion)
+    losses = train(srnet, train_loader,optimizer, criterion)
     if save:
-        
+        torch.save({
+			'epoch': n_epochs,
+			'model_state_dict': srnet.state_dict(),
+			'optimizer_state_dict': optimizer.state_dict(),
+			'loss': losses,
+			}, 'vae.pt')

@@ -4,7 +4,6 @@ import torch.utils.data
 from torch import nn, optim
 from torch.nn import functional as F
 import numpy as np
-# from .utils import *
     
 class LinearBlock(nn.Module):
     def __init__(self, in_channels,out_channels,activation=True):
@@ -25,6 +24,15 @@ class LinearBlock(nn.Module):
 
 class VAE(nn.Module):
     def __init__(self, dimx, dimz, n_sources=1,device='cpu',variational=True):
+        """Variationnal Auto encoder class
+
+        Args:
+            dimx (int): input size. In the project we use STFT of dim 256*128, 
+            dimz (int): dim of the latent space
+            n_sources (int, optional): number of sources to separate . Defaults to 1.
+            device (str, optional):  Defaults to 'cpu'.
+            variational (bool, optional): Defaults to True.
+        """
         super(VAE, self).__init__()
 
         self.dimx = dimx
@@ -64,6 +72,7 @@ class VAE(nn.Module):
         return mu,logvar
 
     def reparameterize(self, mu, logvar):
+        # reparametrization trick
         std = torch.exp(0.5*logvar)
         eps = torch.randn_like(std)
         return mu + eps*std

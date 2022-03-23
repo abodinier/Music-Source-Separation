@@ -3,12 +3,6 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment
 from torch import nn
 
-def mix_data(data):
-    n = data.size(0)//2
-    sources = torch.cat([data[:n],data[n:2*n]],1) / 2.0
-    data = sources.sum(1).unsqueeze(1)
-    return data, sources
-    
 def KLD_gauss(mu,logvar):
     """
     Compute Kullback-Leibler divergence KL(q(x)||p(x)) where p(x) is Gaussian, q(x) is Gaussian
@@ -18,7 +12,7 @@ def KLD_gauss(mu,logvar):
         logvar (tensor): logarithm standard variation
 
     Returns:
-        _type_: Return the KLD 
+        KLD: Return the KLD 
     """
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
     return KLD
@@ -52,7 +46,7 @@ def vae_masks(mu_s, x):
     return mu_sm
 
 def optimal_permute(y,x):
-    """Optimal permutation based on MSE
+    """Optimal permutation based on Mean Squared Error
 
     Args:
         y (tensor): 
@@ -119,3 +113,12 @@ class Loss(nn.Module):
         
         loss = ELL + beta*KLD
         return loss, ELL,  KLD
+
+
+
+def mix_data(data):
+    n = data.size(0)//2
+    sources = torch.cat([data[:n],data[n:2*n]],1) / 2.0
+    data = sources.sum(1).unsqueeze(1)
+    return data, sources
+    

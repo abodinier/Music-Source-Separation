@@ -5,3 +5,4 @@ gradio
 stempeg
 ffmpeg-python
 ffprobe
+museval

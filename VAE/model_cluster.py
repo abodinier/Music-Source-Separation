@@ -6,7 +6,7 @@ def separate_audio_cluster(audio):
 	"""separate sources using cluster algorithm
 
 	Args:
-		audio (path): input file
+		audio (str): input file
 
 	Returns:
 		tuple: (rate of audio, array with the audio)

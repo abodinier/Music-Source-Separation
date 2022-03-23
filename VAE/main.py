@@ -9,7 +9,8 @@ def main(args):
 	print("Starting program.")
 
 	if args.train:
-		artemis.launch_model(save=args.save)
+		print("Launching the training.")
+		artemis.launch_model(save=args.save, plot=args.plot, load=args.load)
 
 	
 	if args.gradio:
@@ -19,9 +20,7 @@ def main(args):
 		out2 = gr.outputs.Audio(type="auto", label='Drums')
 		out3 = gr.outputs.Audio(type="auto", label='Bass')
 		out4 = gr.outputs.Audio(type="auto", label='Other')
-
 		iface = gr.Interface(separate_audio_cluster,inp, [out1,out2,out3,out4],description="Please upload a song with several sources. Then click on submit to separate the sources.",  title="Source separation",theme='grass')
-
 		iface.launch(debug=False)
 
 	print("Program finished sucessfully.")
@@ -41,9 +40,6 @@ if __name__=="__main__":
 
 	parser.add_argument("-t", "--train", metavar="T", default=True, type=bool,
 		help="Set to True to train the Variational Autoencoder on musdb18 data.")
-
-	parser.add_argument("-e", "--eval", metavar="I", default=None, type=str,
-		help="Set the path of a pretrained model from ./saved to be loaded")
 
 	parser.add_argument("-s", "--save", metavar="S", default=None, type=str,
 		help="Set to True to save the model.")
