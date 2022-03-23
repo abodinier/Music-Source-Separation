@@ -206,14 +206,16 @@ class MUSDB18Dataset(torch.utils.data.Dataset):
             audio_sources[source] = audio
 
         # apply linear mix over source index=0
-        #audio_mix = torch.stack(list(audio_sources.values())).sum(0)
         audio_mix = audio_sources["mixture"]
         if self.targets:
             audio_sources = torch.stack(
                 [wav for src, wav in audio_sources.items() if src in self.targets], dim=0
             )
             audio_mix = torch.sum(audio_sources, dim=0)
-        return audio_mix, audio_sources
+        
+        audio_sources_mono = torch.tensor([librosa.to_mono(wav) for wav in audio_sources])
+
+        return audio_mix, audio_sources_mono
 
     def __len__(self):
         return len(self.tracks) * self.samples_per_track

@@ -3,6 +3,7 @@ import yaml
 import torch
 import shutil
 import random
+import librosa
 import argparse
 import numpy as np
 import pandas as pd
@@ -75,6 +76,8 @@ SAVE_WEIGHTS_EACH_EPOCH = CFG["save_weights_each_epoch"]
 ##### HYPER-PARAMETERS
 #####################
 SAMPLE_RATE = CFG["sample_rate"]
+MONO = CFG["mono"]
+INPUT_CHANNELS = 1 if MONO else 2
 SIZE = None if CFG["size"] == -1 else CFG["size"]
 LR = CFG["learning_rate"]
 N_EPOCHS = CFG["n_epochs"]
@@ -122,7 +125,8 @@ train_dataset = MUSDB18Dataset(
     random_segments=RANDOM_SEGMENT,
     random_track_mix=RANDOM_TRACK_MIX,
     sample_rate=SAMPLE_RATE,
-    size=SIZE
+    size=SIZE,
+    mono=MONO
 )
 TRAIN_LOADER = DataLoader(train_dataset, batch_size=TRAIN_BATCH_SIZE, num_workers=NUM_WORKERS, shuffle=True)
 print(">>> Training Dataloader ready\n")
@@ -138,7 +142,8 @@ test_dataset = MUSDB18Dataset(
     random_segments=RANDOM_SEGMENT,
     random_track_mix=RANDOM_TRACK_MIX,
     sample_rate=SAMPLE_RATE,
-    size=SIZE
+    size=SIZE,
+    mono=MONO
 )
 TEST_LOADER = DataLoader(test_dataset, batch_size=TEST_BATCH_SIZE, num_workers=NUM_WORKERS, shuffle=True)
 print(">>> TEST Dataloader ready\n")
@@ -157,6 +162,7 @@ MODEL = ConvTasNet(
     L=L,
     N=N,
     stride=STRIDE,
+    input_channels=INPUT_CHANNELS,
     mask_nonlinear="softmax",
     device=DEVICE
 ).to(DEVICE)
@@ -337,10 +343,19 @@ def save_data_example(x, y, epoch):
             path = CKP_PATH/f"epoch_{epoch}_track_{i}"
             if not path.is_dir():
                 path.mkdir()
-            wavfile.write(path/"mixture.wav", SAMPLE_RATE, x[i].cpu().detach().numpy())
+            
+            x_i = x[i].cpu().detach().numpy()
+            if not MONO:
+                x_i = librosa.to_mono(x_i)
+            wavfile.write(path/"mixture.wav", SAMPLE_RATE, x_i)
+            
             for j, s in enumerate(y[i]):
                 name = path/f"{TARGETS[j]}.wav"
-                wavfile.write(str(name), SAMPLE_RATE, s.cpu().detach().numpy())
+                
+                s = s.cpu().detach().numpy()
+                if not MONO:
+                    s = librosa.to_mono(s)
+                wavfile.write(str(name), SAMPLE_RATE, s)
 
 def save_gradient_norms(model, loss, epoch):
     with open(CKP_LOGS/f"train_epoch{epoch}.log", "a") as log:
