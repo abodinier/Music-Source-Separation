@@ -2,9 +2,9 @@ sample_rate: 22050
 size: -1
 learning_rate: 0.001
 n_epochs: 50
-train_batch_size: 8
-test_batch_size: 8
-segment_size: 4
+train_batch_size: 2
+test_batch_size: 2
+segment_size: 3
 samples_per_track: 4
 random_segment: True
 random_track_mix: False
