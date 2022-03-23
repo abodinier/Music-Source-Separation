@@ -199,16 +199,17 @@ def train(model, dataset, criterion, optimizer, epoch):
             with torch.cuda.amp.autocast():
                 output = model(x)
                 loss = criterion(output, y, reduction='none').sum(axis=(0, 1, 2))  # sum over batches, sources and frames
+                epoch_loss += loss.item()
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
         else:
             output = model(x)
             loss = criterion(output, y, reduction='none').sum(axis=(0, 1, 2))  # sum over batches, sources and frames
+            epoch_loss += loss.item()
             loss.backward()
             optimizer.step()
         
-        epoch_loss += loss.item()
         data_counter += batch_size
         
         if STORE_GRADIENT_NORM:
