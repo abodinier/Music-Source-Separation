@@ -50,11 +50,8 @@ class ConvTasNet(nn.Module):
             est_source: [M, C, T]
         """
         mixture_w = self.encoder(mixture)
-        print("mixture dims", mixture_w.shape)
         est_mask = self.separator(mixture_w)
-        print("mask dims", est_mask.shape)
         est_source = self.decoder(mixture_w, est_mask)
-        print("est dims", est_source.shape)
 
         # T changed after conv1d in encoder, fix it here
         T_origin = mixture.size(-1)
