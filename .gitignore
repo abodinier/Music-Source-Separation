@@ -1,5 +1,6 @@
 .env
 *.pyc
+*.csv
 *.mp3
 *.wav
 *.pkl
@@ -7,3 +8,4 @@ musdb_data*
 training_jobs/
 weights/
 experiments_archive
+experiment_results

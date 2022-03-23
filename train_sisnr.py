@@ -14,7 +14,7 @@ from datetime import datetime
 
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
-from torch.nn.functional import l1_loss, mse_loss
+from kaituoxu.pit_criterion import sisnr
 
 from asteroid.data import MUSDB18Dataset
 
@@ -34,7 +34,7 @@ args = parser.parse_args()
 if args.restore is not None:
     CKP_PATH = Path(args.restore)
 else:
-    time.sleep(1. + 20 * random.random())
+    #time.sleep(1. + 20 * random.random())
     CKP_PATH = Path(args.ckpdir)/f"training_{datetime.now().strftime('%Y%m%d-%H%M%S.%f')[:-3]}"
     while CKP_PATH.is_dir(): # avoid problems creating multiple training dir simultaneously
         time.sleep(1. + 10 * random.random())
@@ -167,7 +167,7 @@ MODEL = ConvTasNet(
     device=DEVICE
 ).to(DEVICE)
 
-LOSS = eval(CFG["loss"])
+LOSS = sisnr
 OPTIMIZER = optim.Adam(MODEL.parameters(), lr=LR)
 LR_UPDATER = lr_scheduler.ReduceLROnPlateau(OPTIMIZER, patience=5, factor=0.5)
 HISTORY = None
@@ -204,14 +204,14 @@ def train(model, dataset, criterion, optimizer, epoch):
             y = y.to(DEVICE, dtype=torch.float16)
             with torch.cuda.amp.autocast():
                 output = model(x)
-                loss = criterion(output, y, reduction='none').sum(axis=(0, 1, 2))  # sum over batches, sources and frames
+                loss = criterion(output, y).sum(axis=(0, 1, 2))  # sum over batches, sources and frames
                 epoch_loss += loss.item()
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
         else:
             output = model(x)
-            loss = criterion(output, y, reduction='none').sum(axis=(0, 1, 2))  # sum over batches, sources and frames
+            loss = criterion(output, y).sum(axis=(0, 1, 2))  # sum over batches, sources and frames
             epoch_loss += loss.item()
             loss.backward()
             optimizer.step()
@@ -245,10 +245,10 @@ def test(model, dataset, criterion):
                 y = y.to(DEVICE, dtype=torch.float16)
                 with torch.cuda.amp.autocast():
                     output = model(x)
-                    loss = criterion(output, y, reduction='none').sum(axis=(0, 1, 2))
+                    loss = criterion(output, y).sum(axis=(0, 1, 2))
             else:
                 output = model(x)
-                loss = criterion(output, y, reduction='none').sum(axis=(0, 1, 2))
+                loss = criterion(output, y).sum(axis=(0, 1, 2))
             
             mean_loss += loss.item()
             data_counter += batch_size

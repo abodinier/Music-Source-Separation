@@ -14,8 +14,7 @@ from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader
 
 from kaituoxu.conv_tasnet import ConvTasNet
-from kaituoxu.pit_criterion import cal_loss as si_snr
-from torch.nn.functional import l1_loss, mse_loss
+from kaituoxu.pit_criterion import PitLoss
 
 from asteroid.data import MUSDB18Dataset
 from asteroid.losses import PITLossWrapper
@@ -33,16 +32,21 @@ parser.add_argument("--restore", default=None, type=str)
 parser.add_argument("--description", default=None, type=str)
 args = parser.parse_args()
 
-time.sleep(1. + 5 * random.random())  # avoid problems creating multiple training dir simultaneously
+if args.restore is not None:
+    CKP_PATH = Path(args.restore)
+else:
+    time.sleep(1. + 20 * random.random())
+    CKP_PATH = Path(args.ckpdir)/f"training_{datetime.now().strftime('%Y%m%d-%H%M%S.%f')[:-3]}"
+    while CKP_PATH.is_dir(): # avoid problems creating multiple training dir simultaneously
+        time.sleep(1. + 10 * random.random())
+        CKP_PATH = Path(args.ckpdir)/f"training_{datetime.now().strftime('%Y%m%d-%H%M%S.%f')[:-3]}"
 
-CKP_PATH = Path(args.ckpdir)/f"training_{datetime.now().strftime('%Y%m%d-%H%M%S')}" if args.restore is None else Path(args.restore)
+CKP_PATH.mkdir(parents=True)
+
 CKP_LOGS = CKP_PATH/"logs"
 CKP_PATH_MODEL = CKP_PATH/"model.pth"
 CKP_PATH_HISTORY = CKP_PATH/"history.csv"
-CKP_PATH_CFG = CKP_PATH/"cfg.yaml"
-
-if not CKP_PATH.is_dir():
-    CKP_PATH.mkdir(parents=True)
+CKP_PATH_CFG = CKP_PATH/f"{Path(args.cfg_path).name}"
 
 if not CKP_LOGS.is_dir():
     CKP_LOGS.mkdir(parents=True)
@@ -62,7 +66,7 @@ SEGMENT_SIZE = CFG["segment_size"]
 RANDOM_TRACK_MIX = CFG["random_track_mix"]
 TARGETS = CFG["targets"]
 N_SRC = len(TARGETS)
-LOSS = eval(CFG["loss"])
+LOSS = CFG["loss"]
 STORE_GRADIENT_NORM = CFG["store_gradient_norm"]
 VERBOSE = CFG["verbose"]
 SAVE_WEIGHTS_EACH_EPOCH = CFG["save_weights_each_epoch"]
@@ -77,6 +81,10 @@ N_EPOCHS = CFG["n_epochs"]
 TRAIN_BATCH_SIZE = CFG["train_batch_size"]
 TEST_BATCH_SIZE = CFG["test_batch_size"]
 NUM_WORKERS = CFG["num_workers"]
+if CFG["device"] == "cuda" and torch.cuda.is_available():
+    DEVICE = torch.device("cuda")
+else:
+    DEVICE = torch.device("cpu")
 
 X = CFG["X"]
 R = CFG["R"]
@@ -92,6 +100,8 @@ CLIP = CFG["gradient_clipping"]
 print("\n>>> PARAMETERS")
 for key, value in CFG.items():
     print(f"\t>>> {key.upper()} -> {value}")
+print("\t>>> DEVICE = ", DEVICE)
+print("\t>>> CKP name = ", CKP_PATH.name)
 print("\n\n")
 
 if not CKP_PATH.exists():
@@ -146,12 +156,14 @@ model = ConvTasNet(
     P=P,
     L=L,
     N=N,
-    mask_nonlinear="softmax"
-)
+    stride=STRIDE,
+    mask_nonlinear="softmax",
+    device=DEVICE
+).to(DEVICE)
 
-loss = LOSS
+loss = PitLoss(criterion=LOSS)
 optimizer = optim.Adam(model.parameters(), lr=LR)
-lr_updater = lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, factor=0.1)
+lr_updater = lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, factor=0.5)
 history = None
 
 
@@ -178,28 +190,16 @@ def train(model, dataset, criterion, optimizer, mse, epoch):
         optimizer.zero_grad()
         
         x, y = train_batch
+        x = x.to(DEVICE)
+        y = y.to(DEVICE)
         
-        if epoch == 1:
-            for i in range(x.shape[0]):
-                path = CKP_PATH/f"epoch_{epoch}_track_{i}"
-                if not path.is_dir():
-                    path.mkdir()
-                wavfile.write(path/"mixture.wav", SAMPLE_RATE, x[i].detach().numpy())
-                for j, s in enumerate(y[i]):
-                    name = path/f"{j}.wav"
-                    wavfile.write(str(name), SAMPLE_RATE, s.detach().numpy())
+        save_data_example(x, y, epoch)
     
         batch_size = x.shape[0]
         length = x.shape[-1]
-        signal_length = length * torch.ones(batch_size)
+        signal_length = length * torch.ones(batch_size).to(DEVICE)
         
-        output = model(x)
-
-        if CFG["loss"] == "si_snr":
-            loss, max_snr, estimate_source, reorder_estimate_source = criterion(output, y, signal_length)
-        if CFG["loss"] in ("l1_loss", "mse_loss"):
-            loss = criterion(output, y)
-            max_snr = torch.zeros(2)
+        output, loss, max_snr = forward(model, x, y, signal_length, criterion)
         loss.backward()
         
         epoch_mse_loss += mse(output, y).item()
@@ -210,33 +210,13 @@ def train(model, dataset, criterion, optimizer, mse, epoch):
 
         
         if STORE_GRADIENT_NORM:
-            with open(CKP_LOGS/f"train_epoch{epoch}.log", "a") as log:
-                for layer in model.modules():
-                    try:
-                        name = layer.__str__()
-                        min_grad = np.min(np.abs(layer.weight.grad.detach().numpy()))
-                        mean_grad = np.mean(np.abs(layer.weight.grad.detach().numpy()))
-                        max_grad = np.max(np.abs(layer.weight.grad.detach().numpy()))
-                        info = f">>> NAME : {name} | LOSS = {loss.item()} | min grad = {min_grad} | max grad = {max_grad} | mean grad = {mean_grad}\n"
-                        if VERBOSE == 1:
-                            print(info)
-                        log.write(info)
-                    except:
-                        pass
+            save_gradient_norms(model, loss, epoch)
         
         torch.nn.utils.clip_grad_norm_(model.parameters(), CLIP)
         optimizer.step()
         
         if SAVE_WEIGHTS_EACH_EPOCH:
-            torch.save(
-                {
-                    'epoch': epoch,
-                    'loss': loss,
-                    'model_state_dict': model.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict(),
-                },
-                CKP_PATH/f"model_{epoch}.pth"
-            )
+            save_ckp(model, optimizer, loss, epoch)
         
     epoch_loss /= data_counter
     epoch_mse_loss /= data_counter
@@ -256,17 +236,14 @@ def test(model, dataset, criterion, mse):
         
         for n_batch, test_batch in enumerate(dataset):
             x, y = test_batch
+            x = x.to(DEVICE)
+            y = y.to(DEVICE)
+            
             batch_size = x.shape[0]
             length = x.shape[-1]
             signal_length = length * torch.ones(batch_size)
             
-            output = model(x)
-
-            if CFG["loss"] == "si_snr":
-                loss, max_snr, estimate_source, reorder_estimate_source = criterion(output, y, signal_length)
-            if CFG["loss"] in ("l1_loss", "mse_loss"):
-                loss = criterion(output, y)
-                max_snr = torch.zeros(2)
+            output, loss, max_snr = forward(model, x, y, signal_length, criterion)
             
             mean_mse_loss += mse(output, y).item()
             mean_loss += loss.item()
@@ -281,20 +258,6 @@ def test(model, dataset, criterion, mse):
         mean_snr /= data_counter
     
     return mean_loss, mean_mse_loss, mean_snr
-
-
-def checkpoint(model, epoch, optimizer, lr_scheduler, best_loss, loss, ckp_dir, delta=1e-3):
-    if loss <= best_loss + delta:
-        torch.save(
-            {
-                'epoch': epoch,
-                'loss': loss,
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'lr_scheduler': lr_scheduler.state_dict()
-            },
-            ckp_dir
-        )
 
 
 def fit(model, train_set, test_set, criterion, optimizer, lr_updater, epochs, history=None):
@@ -379,6 +342,68 @@ def fit(model, train_set, test_set, criterion, optimizer, lr_updater, epochs, hi
         history.index.name = "epoch"
         history.to_csv(CKP_PATH_HISTORY)
 
+def forward(model, x, y, signal_length, criterion):
+    if CFG["device"] == "cuda":
+        with torch.cuda.amp.autocast(dtype=torch.float16):
+            output = model(x)
+
+            loss, max_snr, estimate_source, reorder_estimate_source = criterion(y, output, signal_length)
+    else:
+        output = model(x)
+
+        loss, max_snr, estimate_source, reorder_estimate_source = criterion(y, output, signal_length)
+    
+    return output, loss, max_snr
+
+def checkpoint(model, epoch, optimizer, lr_scheduler, best_loss, loss, ckp_dir, delta=1e-3):
+    if loss <= best_loss + delta:
+        torch.save(
+            {
+                'epoch': epoch,
+                'loss': loss,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'lr_scheduler': lr_scheduler.state_dict()
+            },
+            ckp_dir
+        )
+
+def save_data_example(x, y, epoch):
+    if epoch == 1:
+        for i in range(x.shape[0]):
+            path = CKP_PATH/f"epoch_{epoch}_track_{i}"
+            if not path.is_dir():
+                path.mkdir()
+            wavfile.write(path/"mixture.wav", SAMPLE_RATE, x[i].cpu().detach().numpy())
+            for j, s in enumerate(y[i]):
+                name = path/f"{TARGETS[j]}.wav"
+                wavfile.write(str(name), SAMPLE_RATE, s.cpu().detach().numpy())
+
+def save_gradient_norms(model, loss, epoch):
+    with open(CKP_LOGS/f"train_epoch{epoch}.log", "a") as log:
+        for layer in model.modules():
+            try:
+                name = layer.__str__()
+                min_grad = np.min(np.abs(layer.weight.grad.cpu().detach().numpy()))
+                mean_grad = np.mean(np.abs(layer.weight.grad.cpu().detach().numpy()))
+                max_grad = np.max(np.abs(layer.weight.grad.cpu().detach().numpy()))
+                info = f">>> NAME : {name} | LOSS = {loss.item()} | min grad = {min_grad} | max grad = {max_grad} | mean grad = {mean_grad}\n"
+                if VERBOSE == 1:
+                    print(info)
+                log.write(info)
+            except Exception as e:
+                pass
+
+def save_ckp(model, optimizer, loss, epoch):
+    torch.save(
+        {
+            'epoch': epoch,
+            'loss': loss,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+        },
+        CKP_PATH/f"model_{epoch}.pth"
+    )
 
 ################
 ### Train ######
