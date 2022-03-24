@@ -11,8 +11,7 @@ EPS = 1e-8
 
 
 class ConvTasNet(nn.Module):
-    def __init__(self, N, L, B, H, P, X, R, C, norm_type="gLN", causal=False,
-                 mask_nonlinear='relu'):
+    def __init__(self, N, L, B, H, P, X, R, C, stride, input_channels=1, norm_type="gLN", causal=False, mask_nonlinear='relu', device="cpu"):
         """
         Args:
             N: Number of filters in autoencoder
@@ -29,18 +28,19 @@ class ConvTasNet(nn.Module):
         """
         super(ConvTasNet, self).__init__()
         # Hyper-parameter
-        self.N, self.L, self.B, self.H, self.P, self.X, self.R, self.C = N, L, B, H, P, X, R, C
+        self.N, self.L, self.B, self.H, self.P, self.X, self.R, self.C, self.input_channels = N, L, B, H, P, X, R, C, input_channels
         self.norm_type = norm_type
         self.causal = causal
         self.mask_nonlinear = mask_nonlinear
         # Components
-        self.encoder = Encoder(L, N)
+        self.encoder = Encoder(L, N, stride, input_channels)
         self.separator = TemporalConvNet(N, B, H, P, X, R, C, norm_type, causal, mask_nonlinear)
-        self.decoder = Decoder(N, L)
+        self.decoder = Decoder(N, L, device=device)
+        self.device = device
         # init
         for p in self.parameters():
             if p.dim() > 1:
-                nn.init.xavier_normal_(p)
+                nn.init.kaiming_uniform_(p)
 
     def forward(self, mixture):
         """
@@ -97,13 +97,13 @@ class ConvTasNet(nn.Module):
 class Encoder(nn.Module):
     """Estimation of the nonnegative mixture weight by a 1-D conv layer.
     """
-    def __init__(self, L, N):
+    def __init__(self, L, N, stride, input_channels):
         super(Encoder, self).__init__()
         # Hyper-parameter
-        self.L, self.N = L, N
+        self.L, self.N, self.stride, self.input_channels = L, N, stride, input_channels
         # Components
         # 50% overlap
-        self.conv1d_U = nn.Conv1d(1, N, kernel_size=L, stride=L // 2, bias=False)
+        self.conv1d_U = nn.Conv1d(input_channels, N, kernel_size=L, stride=self.stride, bias=False)
 
     def forward(self, mixture):
         """
@@ -112,18 +112,20 @@ class Encoder(nn.Module):
         Returns:
             mixture_w: [M, N, K], where K = (T-L)/(L/2)+1 = 2T/L-1
         """
-        mixture = torch.unsqueeze(mixture, 1)  # [M, 1, T]
+        if self.input_channels == 1:
+            mixture = torch.unsqueeze(mixture, 1)  # [M, n_channels, T]
         mixture_w = F.relu(self.conv1d_U(mixture))  # [M, N, K]
         return mixture_w
 
 
 class Decoder(nn.Module):
-    def __init__(self, N, L):
+    def __init__(self, N, L, device="cpu"):
         super(Decoder, self).__init__()
         # Hyper-parameter
         self.N, self.L = N, L
         # Components
         self.basis_signals = nn.Linear(N, L, bias=False)
+        self.device = device
 
     def forward(self, mixture_w, est_mask):
         """
@@ -138,7 +140,7 @@ class Decoder(nn.Module):
         source_w = torch.transpose(source_w, 2, 3) # [M, C, K, N]
         # S = DV
         est_source = self.basis_signals(source_w)  # [M, C, K, L]
-        est_source = overlap_and_add(est_source, self.L//2) # M x C x T
+        est_source = overlap_and_add(est_source, self.L//2, device=self.device) # M x C x T
         return est_source
 
 

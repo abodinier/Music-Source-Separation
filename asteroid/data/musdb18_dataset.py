@@ -112,11 +112,12 @@ class MUSDB18Dataset(torch.utils.data.Dataset):
         samples_per_track=1,
         random_segments=False,
         random_track_mix=False,
-        source_augmentations=lambda audio: audio,
+        source_augmentations=None,
         sample_rate=44100,
         mono=True,
         stem_structure_dict=None,
-        size=None
+        size=None,
+        seed=0
     ):
 
         self.root = Path(root).expanduser()
@@ -146,6 +147,8 @@ class MUSDB18Dataset(torch.utils.data.Dataset):
                 3: "other",
                 4: "vocals"
             }
+        self.seed = seed
+        random.seed(self.seed)
 
     def __getitem__(self, index):
         # assemble the mixture of target and interferers
@@ -156,7 +159,7 @@ class MUSDB18Dataset(torch.utils.data.Dataset):
         if self.random_segments:
             start = random.uniform(0, self.tracks[track_id]["min_duration"] - self.segment)
         else:
-            start = 0
+            start = (index % self.samples_per_track) * self.segment
 
         # load sources
         for idx, source in self.stem_structure_dict.items():
@@ -198,18 +201,21 @@ class MUSDB18Dataset(torch.utils.data.Dataset):
             # convert to torch tensor
             audio = torch.tensor(audio.T, dtype=torch.float)
             # apply source-wise augmentations
-            audio = self.source_augmentations(audio)
+            if self.source_augmentations is not None:
+                audio = self.source_augmentations(audio)
             audio_sources[source] = audio
 
         # apply linear mix over source index=0
-        #audio_mix = torch.stack(list(audio_sources.values())).sum(0)
         audio_mix = audio_sources["mixture"]
         if self.targets:
             audio_sources = torch.stack(
                 [wav for src, wav in audio_sources.items() if src in self.targets], dim=0
             )
             audio_mix = torch.sum(audio_sources, dim=0)
-        return audio_mix, audio_sources
+        
+        audio_sources_mono = torch.tensor([librosa.to_mono(wav) for wav in audio_sources])
+
+        return audio_mix, audio_sources_mono
 
     def __len__(self):
         return len(self.tracks) * self.samples_per_track
