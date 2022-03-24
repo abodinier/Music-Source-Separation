@@ -1,5 +1,5 @@
-# IA321 - Projet IA
-## Topic : Blind Source Separation applied to music
+# IA321 - Artificial Intelligence Project
+## Topic: Blind Source Separation applied to music
 
 * Authors: Grégoire Hugon, Davy Simeu, Thibaut Vaillant, Thomas Nigoghossian, Alexandre Bodinier
 * Supervisor: Franchi Gianni (Prof. U2IS, ENSTA Paris, Institut Polytechnique de Paris)
@@ -12,8 +12,6 @@
 3. **Facebook** Demucs: https://github.com/facebookresearch/demucs 
 4. **Deezer** Spleeter: https://github.com/deezer/spleeter
 
-
-# Important:
 ## Requirements:
 In order to read STEM files, you must install ffmpeg.
 If you use conda, run `conda install -c conda-forge ffmpeg`, on MacOs, run `brew install ffmpeg`. Otherwise, please refer to [the offical repository](https://github.com/faroit/stempeg) for more information.
